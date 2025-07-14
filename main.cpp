@@ -5,6 +5,7 @@
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_keycode.h>
+#include <SDL3_image/SDL_image.h>
 #include <iostream>
 
 // Link SDL3 libraries on Windows
