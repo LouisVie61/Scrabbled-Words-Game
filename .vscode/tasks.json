@@ -1,34 +1,26 @@
 {
-    "version": "2.0.0",
-    "tasks": [
-        {
-            "label": "Build SDL Game",
-            "type": "shell",
-            "command": "g++",
-            "args": [
-                "-std=c++17",
-                "-I./include",
-                "-L./lib",
-                "main.cpp",
-                "-lSDL3main",
-                "-lSDL3",
-                "-lSDL3_image",
-                "-lSDL3_ttf",
-                "-lSDL3_mixer",
-                "-o",
-                "scrabble_game.exe"
-            ],
-            "group": {
-                "kind": "build",
-                "isDefault": true
-            },
-            "presentation": {
-                "echo": true,
-                "reveal": "always",
-                "focus": false,
-                "panel": "shared"
-            },
-            "problemMatcher": "$gcc"
-        }
-    ]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build SDL3 App",
+      "type": "shell",
+      "command": "g++",
+      "args": [
+        "-I${workspaceFolder}/SDL3/SDL3-3.2.16/x86_64-w64-mingw32/include",
+        "-I${workspaceFolder}/SDL3_image/SDL3_image-3.2.4/x86_64-w64-mingw32/include",
+        "-L${workspaceFolder}/SDL3/SDL3-3.2.16/x86_64-w64-mingw32/lib",
+        "-L${workspaceFolder}/SDL3_image/SDL3_image-3.2.4/x86_64-w64-mingw32/lib",
+        "main.cpp",
+        "-lSDL3",
+        "-lSDL3_image",
+        "-o",
+        "main.exe"
+      ],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": []
+    }
+  ]
 }
