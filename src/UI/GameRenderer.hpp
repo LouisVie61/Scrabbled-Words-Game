@@ -17,7 +17,7 @@ private:
     
     // Board rendering constants
     static const int BOARD_OFFSET_X = 50;
-    static const int BOARD_OFFSET_Y = 50;
+    static const int BOARD_OFFSET_Y = 90;
     static const int CELL_SIZE = 40;
     static const int BOARD_SIZE = 15;
     
