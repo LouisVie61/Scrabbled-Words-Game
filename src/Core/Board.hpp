@@ -55,6 +55,8 @@ public:
     // Scoring
     int calculateWordScore(int row, int col, const string& word, 
                           const string& direction) const;
+
+    std::string getTilesInDirection(int startRow, int startCol, const std::string& direction, int length) const;
     
     // Board state
     bool isEmpty() const;

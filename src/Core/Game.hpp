@@ -11,9 +11,17 @@
 
 class GameRenderer;
 
+struct TilePlacement {
+    int row;
+    int col;
+    const Tile* tile;
+};
+
 enum class GameState {
     MENU,
     PLAYING,
+    PLACING_TILES,
+    VALIDATING_WORD,
     GAME_OVER,
     PAUSED
 };
@@ -40,6 +48,11 @@ private:
     bool gameOver;
     int consecutivePasses; // Track consecutive passes/skips
     
+    // Add word placement tracking
+    std::vector<std::pair<int, int>> currentWordPositions;
+    std::string currentWord;
+    bool wordInProgress;
+
     // SDL components
     SDL_Window* window;
     SDL_Renderer* renderer;
@@ -78,9 +91,9 @@ public:
     void endGame();
     
     // Turn management
-    
     const Player& getCurrentPlayer() const;
     const Player& getOtherPlayer() const;
+    
     Player& getCurrentPlayer();
     Player& getOtherPlayer();
     void switchTurn();
@@ -102,10 +115,23 @@ public:
     
     // Rendering
     void render();
-
+    
+    // testing and debugging
+    void printHelp() const;
     void printGameState() const;
-    void testWordValidation();
     void placeTestWord();
+    void givePlayerTestTiles();
+    void testScoring();
+    void testDictionary();
+    void resetBoard();
+
+    // Game player's actions
+    void startWordPlacement();
+    bool placeTileFromRack(int row, int col);
+    bool validateCurrentWord();
+    void cancelWord();
+    void refillPlayerRack();
+    std::string buildWordFromPositions() const;
     
     // Event handling
     void handleEvents();
@@ -120,4 +146,5 @@ public:
     const Player& getPlayer1() const;
     const Player& getPlayer2() const;
     size_t getTileBagSize() const;
+    std::vector<TilePlacement> getCurrentWord() const;
 };
