@@ -97,11 +97,18 @@ void GameRenderer::renderTile(float x, float y, const Tile* tile) {
 }
 
 void GameRenderer::renderPlayerRacks(const Player& player1, const Player& player2, int currentPlayer) {
-    // Render player 1 rack at bottom
-    renderPlayerRack(player1, 50.0f, 700.0f, currentPlayer == 0);
-    
-    // Render player 2 rack at top
-    renderPlayerRack(player2, 50.0f, 50.0f, currentPlayer == 1);
+    float rackPadding = 20.0f;
+    float tileSize = CELL_SIZE - 4.0f;
+    float rackHeight = tileSize;
+    float boardHeight = BOARD_SIZE * CELL_SIZE;
+
+    // Bottom
+    float bottomY = BOARD_OFFSET_Y + boardHeight + rackPadding;
+    renderPlayerRack(player1, BOARD_OFFSET_X, bottomY, currentPlayer == 0);
+
+    // Top
+    float topY = BOARD_OFFSET_Y - rackHeight - rackPadding;
+    renderPlayerRack(player2, BOARD_OFFSET_X, topY, currentPlayer == 1);
 }
 
 void GameRenderer::renderPlayerRack(const Player& player, float x, float y, bool isActive) {
