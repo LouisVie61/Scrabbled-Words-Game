@@ -1,1 +1,2 @@
 - To inject new lib, we need to create a new folder and then download the releases of this lib and extract all into the folder we've created before.
+- Config in c_cpp_properties.json
