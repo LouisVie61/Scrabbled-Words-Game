@@ -206,6 +206,14 @@ void Game::endGame() {
     std::cout << player2.getName() << ": " << player2.getScore() << std::endl;
 }
 
+const Player& Game::getCurrentPlayer() const {
+    return (currentPlayerIndex == 0) ? player1 : player2;
+}
+
+const Player& Game::getOtherPlayer() const {
+    return (currentPlayerIndex == 0) ? player2 : player1;
+}
+
 Player& Game::getCurrentPlayer() {
     return (currentPlayerIndex == 0) ? player1 : player2;
 }
@@ -359,17 +367,65 @@ void Game::render() {
     gameRenderer->present();
 }
 
+// Add these methods to Game class:
+
+void Game::printGameState() const {
+    std::cout << "\n=== GAME STATE ===" << std::endl;
+    std::cout << "Current Player: " << getCurrentPlayerIndex() << std::endl;
+    std::cout << "Player 1 (" << player1.getName() << "): Score = " << player1.getScore() << std::endl;
+    std::cout << "Player 2 (" << player2.getName() << "): Score = " << player2.getScore() << std::endl;
+    std::cout << "Tiles in bag: " << tileBag.size() << std::endl;
+    std::cout << "Consecutive passes: " << consecutivePasses << std::endl;
+    
+    // Use direct access instead of getCurrentPlayer()
+    const auto& rack = (currentPlayerIndex == 0) ? player1.getRack() : player2.getRack();
+    std::cout << "Current player's rack: ";
+    for (const auto& tile : rack) {
+        std::cout << tile.getLetter() << "(" << tile.getPoints() << ") ";
+    }
+    std::cout << std::endl;
+}
+
+void Game::testWordValidation() {
+    std::vector<std::string> testWords = {"HELLO", "WORLD", "SCRABBLE", "INVALID", "TEST"};
+    
+    std::cout << "\n=== WORD VALIDATION TEST ===" << std::endl;
+    for (const std::string& word : testWords) {
+        bool valid = isValidWord(word);
+        std::cout << "Word: " << word << " - " << (valid ? "VALID" : "INVALID") << std::endl;
+    }
+}
+
+void Game::placeTestWord() {
+    // Place a test word on the board
+    std::vector<Tile> testTiles = {
+        Tile('H', 4),
+        Tile('E', 1),
+        Tile('L', 1),
+        Tile('L', 1),
+        Tile('O', 1)
+    };
+    
+    // Place HELLO horizontally starting at center
+    int startRow = 7, startCol = 6;
+    for (size_t i = 0; i < testTiles.size(); i++) {
+        board.placeTile(startRow, startCol + static_cast<int>(i), testTiles[i]);
+    }
+    
+    std::cout << "Placed test word 'HELLO' on board!" << std::endl;
+}
+
 void Game::handleEvents() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
-            case SDL_EVENT_QUIT:  // SDL3 event name
+            case SDL_EVENT_QUIT:
                 isRunning = false;
                 break;
-            case SDL_EVENT_MOUSE_BUTTON_DOWN:  // SDL3 event name
+            case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 handleMouseClick(event.button.x, event.button.y);
                 break;
-            case SDL_EVENT_KEY_DOWN:  // SDL3 event name
+            case SDL_EVENT_KEY_DOWN:
                 handleKeyPress(event.key.key);
                 break;
         }
@@ -395,6 +451,49 @@ bool Game::handleKeyPress(SDL_Keycode key) {
             if (gameState == GameState::PLAYING) {
                 skipTurn();
             }
+            break;
+        case SDLK_R:
+            // Reset board
+            board.clear();
+            std::cout << "Board cleared!" << std::endl;
+            break;
+            
+        case SDLK_T:
+            // Switch turns manually
+            switchTurn();
+            std::cout << "Switched to player: " << getCurrentPlayerIndex() << std::endl;
+            break;
+            
+        case SDLK_D:
+            // Draw tiles for current player
+            drawTilesForPlayer(getCurrentPlayer(), 1);
+            std::cout << "Drew tile for player " << getCurrentPlayerIndex() << std::endl;
+            break;
+            
+        case SDLK_P:
+            // Print game state
+            printGameState();
+            break;
+            
+        case SDLK_W:
+            // Test word validation
+            testWordValidation();
+            break;
+        case SDLK_1:
+            placeTestWord();
+            break;
+        case SDLK_2:
+            // Add current player's score
+            getCurrentPlayer().addScore(10);
+            std::cout << "Added 10 points to current player" << std::endl;
+            break;
+        case SDLK_3:
+            // Fill current player's rack with test tiles
+            getCurrentPlayer().clearRack();
+            for (char c = 'A'; c <= 'G'; c++) {
+                getCurrentPlayer().addTileToRack(Tile(c, 1));
+            }
+            std::cout << "Filled rack with test tiles A-G" << std::endl;
             break;
         default:
             break;
