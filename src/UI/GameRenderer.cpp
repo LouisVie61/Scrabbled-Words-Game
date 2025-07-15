@@ -130,13 +130,25 @@ void GameRenderer::renderPlayerRack(const Player& player, float x, float y, bool
 }
 
 void GameRenderer::renderScores(const Player& player1, const Player& player2) {
-    // Player 1 score area
-    SDL_FRect score1Rect = {650.0f, 650.0f, 200.0f, 50.0f};
+    float rackPadding = 20.0f; // Match the rack padding exactly
+    float rackWidth = 7 * 45.0f;
+    float scoreWidth = 150.0f;
+    float scoreHeight = 40.0f;
+    float tileSize = CELL_SIZE - 4.0f; // Match tile height
+    float boardHeight = BOARD_SIZE * CELL_SIZE;
+    
+    // Position scores next to racks
+    float scoreX = static_cast<float>(BOARD_OFFSET_X + rackWidth + 20);
+    
+    // Bottom score - exactly same Y as bottom rack
+    float bottomY = BOARD_OFFSET_Y + boardHeight + rackPadding;
+    SDL_FRect score1Rect = {scoreX, bottomY, scoreWidth, scoreHeight};
     SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
     SDL_RenderFillRect(renderer, &score1Rect);
     
-    // Player 2 score area
-    SDL_FRect score2Rect = {650.0f, 100.0f, 200.0f, 50.0f};
+    // Top score - exactly same Y as top rack
+    float topY = BOARD_OFFSET_Y - tileSize - rackPadding;
+    SDL_FRect score2Rect = {scoreX, topY, scoreWidth, scoreHeight};
     SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
     SDL_RenderFillRect(renderer, &score2Rect);
 }
