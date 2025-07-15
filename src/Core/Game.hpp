@@ -78,6 +78,9 @@ public:
     void endGame();
     
     // Turn management
+    
+    const Player& getCurrentPlayer() const;
+    const Player& getOtherPlayer() const;
     Player& getCurrentPlayer();
     Player& getOtherPlayer();
     void switchTurn();
@@ -99,6 +102,10 @@ public:
     
     // Rendering
     void render();
+
+    void printGameState() const;
+    void testWordValidation();
+    void placeTestWord();
     
     // Event handling
     void handleEvents();
