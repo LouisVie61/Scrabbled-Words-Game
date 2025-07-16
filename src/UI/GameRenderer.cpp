@@ -48,7 +48,6 @@ void GameRenderer::cleanupFonts() {
     }
     if (smallFont) {
         TTF_CloseFont(smallFont);
-        smallFont = nullptr;
     }
     TTF_Quit();
 }
@@ -417,7 +416,7 @@ bool GameRenderer::initializeTTF() {
 bool GameRenderer::loadFontsFromPaths() {
     const std::vector<std::string> fontPaths = {
         "C:/Windows/Fonts/arial.ttf",
-        "assets/fonts/arial.ttf", 
+        "assets/fonts/arial.ttf",
         "arial.ttf"
     };
     

@@ -35,6 +35,7 @@ enum class GameMode {
 class Game {
 private:
     // Core game components
+    int selectedTileIndex; // Track selected tile index for placement
     Board board;
     Player player1;
     Player player2;
@@ -125,8 +126,15 @@ public:
     void testDictionary();
     void resetBoard();
 
+    // Tracking tile
+    void selectTileFromRack(int index);
+    int getSelectedTileIndex() const;
+    void selectNextTile();
+    void selectPreviousTile();
+
     // Game player's actions
     void startWordPlacement();
+    int getRackTileIndexFromMouse(int mouseX, int mouseY) const;
     bool placeTileFromRack(int row, int col);
     bool validateCurrentWord();
     void cancelWord();

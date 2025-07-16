@@ -43,7 +43,7 @@ int main(int argc, char* argv[])
         return 1;
     }
     
-    // Option 1: Human vs Human
+    // Option 1: Human vs Human 
     if (!game.setupGame(GameMode::HUMAN_VS_HUMAN, "Alice", "Bob")) {
         std::cerr << "Failed to setup game!" << std::endl;
         TTF_Quit();
@@ -73,10 +73,14 @@ int main(int argc, char* argv[])
     
     std::cout << "Game initialized successfully!" << std::endl;
     std::cout << "Controls:" << std::endl;
+    std::cout << "  1-7 keys - Select tiles from rack" << std::endl;
+    std::cout << "  LEFT/RIGHT arrows - Navigate tile selection" << std::endl;
+    std::cout << "  Mouse - Click rack tiles to select, click board to place" << std::endl;
+    std::cout << "  Enter - Submit word" << std::endl;
+    std::cout << "  Backspace - Cancel word placement" << std::endl;
+    std::cout << "  S - Shuffle rack" << std::endl;
     std::cout << "  SPACE - Skip turn" << std::endl;
     std::cout << "  ESC - Quit game" << std::endl;
-    std::cout << "  Mouse - Click to place tiles" << std::endl;
-    std::cout << "  Enter - Submit word" << std::endl;
     
     // Run the game loop
     game.run();

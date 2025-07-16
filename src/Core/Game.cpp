@@ -6,7 +6,8 @@
 
 Game::Game() : gameState(GameState::MENU), gameMode(GameMode::HUMAN_VS_HUMAN),
                currentPlayerIndex(0), gameOver(false), consecutivePasses(0),
-               window(nullptr), renderer(nullptr), isRunning(false) {
+               window(nullptr), renderer(nullptr), isRunning(false),
+               selectedTileIndex(0) {
 }
 
 Game::~Game() {
@@ -94,6 +95,50 @@ bool Game::setupGame(GameMode mode, const std::string& player1Name,
     gameState = GameState::PLAYING;
     
     return true;
+}
+
+void Game::selectTileFromRack(int index) {
+    const auto& rack = getCurrentPlayer().getRack();
+    if (index >= 0 && index < static_cast<int>(rack.size())) {
+        selectedTileIndex = index;
+        std::cout << "Selected tile: " << rack[index].getLetter() 
+                  << " at position " << (index + 1) << "/" << rack.size() << std::endl;
+        
+        // Show rack with new selection
+        std::cout << "Rack: ";
+        for (size_t i = 0; i < rack.size(); i++) {
+            if (i == selectedTileIndex) {
+                std::cout << "[>" << rack[i].getLetter() << "<] ";
+            } else {
+                std::cout << "[" << rack[i].getLetter() << "] ";
+            }
+        }
+        std::cout << std::endl;
+    } else {
+        std::cout << "Invalid tile selection: " << (index + 1) << std::endl;
+    }
+}
+
+int Game::getSelectedTileIndex() const {
+    return selectedTileIndex;
+}
+
+void Game::selectNextTile() {
+    const auto& rack = getCurrentPlayer().getRack();
+    if (!rack.empty()) {
+        selectedTileIndex = (selectedTileIndex + 1) % rack.size();
+        std::cout << "Selected tile: " << rack[selectedTileIndex].getLetter() 
+                  << " (position " << selectedTileIndex + 1 << "/" << rack.size() << ")" << std::endl;
+    }
+}
+
+void Game::selectPreviousTile() {
+    const auto& rack = getCurrentPlayer().getRack();
+    if (!rack.empty()) {
+        selectedTileIndex = (selectedTileIndex - 1 + rack.size()) % rack.size();
+        std::cout << "Selected tile: " << rack[selectedTileIndex].getLetter() 
+                  << " (position " << selectedTileIndex + 1 << "/" << rack.size() << ")" << std::endl;
+    }
 }
 
 bool Game::loadDictionary(const std::string& filename) {
@@ -230,7 +275,7 @@ void Game::switchTurn() {
 
     // Shuffle the new current player's rack
     getCurrentPlayer().shuffleRack();
-    std::cout << "🔀 " << getCurrentPlayer().getName() << "'s tiles shuffled!" << std::endl;
+    std::cout << getCurrentPlayer().getName() << "'s tiles shuffled!" << std::endl;
 }
 
 bool Game::checkGameEnd() {
@@ -331,9 +376,46 @@ bool Game::exchangeTiles(const std::vector<int>& tileIndices) {
 }
 
 void Game::skipTurn() {
+    std::string currentPlayerName = getCurrentPlayer().getName();
+    
+    std::cout << currentPlayerName << " skipped their turn." << std::endl;
+    
     consecutivePasses++;
+    std::cout << "Consecutive passes: " << consecutivePasses << "/" << MAX_CONSECUTIVE_PASSES << std::endl;
+    
+    // Check for game end before switching turns
+    if (consecutivePasses >= MAX_CONSECUTIVE_PASSES) {
+        std::cout << "🔚 Game ending due to " << MAX_CONSECUTIVE_PASSES << " consecutive passes!" << std::endl;
+        endGame();
+        return;
+    }
+    
     switchTurn();
-    checkGameEnd();
+    
+    std::cout << "Now it's " << getCurrentPlayer().getName() << "'s turn." << std::endl;
+    
+    // Show the new player's rack
+    const auto& rack = getCurrentPlayer().getRack();
+    std::cout << "Your tiles: ";
+    for (size_t i = 0; i < rack.size(); i++) {
+        if (i == selectedTileIndex) {
+            std::cout << "[>" << rack[i].getLetter() << "<](" << rack[i].getPoints() << ") ";
+        } else {
+            std::cout << "[" << rack[i].getLetter() << "](" << rack[i].getPoints() << ") ";
+        }
+    }
+    std::cout << std::endl;
+    
+    // Reset selected tile index if it's out of bounds for new player
+    if (selectedTileIndex >= static_cast<int>(rack.size()) && !rack.empty()) {
+        selectedTileIndex = 0;
+        std::cout << "🎯 Selected: " << rack[selectedTileIndex].getLetter() 
+                  << " at position 1/" << rack.size() << std::endl;
+    }
+    
+    if (!checkGameEnd()) {
+        std::cout << "Game continues..." << std::endl;
+    }
 }
 
 bool Game::isValidWord(const std::string& word) const {
@@ -389,18 +471,21 @@ void Game::render() {
 // Add these methods to Game.cpp:
 
 void Game::printHelp() const {
-    std::cout << "\n========== SCRABBLE TESTING CONTROLS ==========" << std::endl;
-    std::cout << "H - Show this help" << std::endl;
-    std::cout << "P - Print current game state" << std::endl;
-    std::cout << "1 - Place test word 'HELLO' on board" << std::endl;
-    std::cout << "2 - Give current player test tiles (A-G)" << std::endl;
-    std::cout << "3 - Test scoring system" << std::endl;
-    std::cout << "4 - Test dictionary (check if words are valid)" << std::endl;
-    std::cout << "R - Reset/clear the board" << std::endl;
-    std::cout << "T - Switch turns between players" << std::endl;
-    std::cout << "SPACE - Skip current player's turn" << std::endl;
-    std::cout << "ESC - Pause game / Quit" << std::endl;
-    std::cout << "MOUSE CLICK - Place a test tile on the board" << std::endl;
+    std::cout << "\n========== SCRABBLE GAME CONTROLS ==========" << std::endl;
+    std::cout << "TILE SELECTION:" << std::endl;
+    std::cout << "  1-7 - Select specific tile from rack" << std::endl;
+    std::cout << "  LEFT/RIGHT ARROWS - Navigate through tiles" << std::endl;
+    std::cout << "\nGAME PLAY:" << std::endl;
+    std::cout << "  MOUSE CLICK - Place selected tile on board" << std::endl;
+    std::cout << "  ENTER - Confirm word placement" << std::endl;
+    std::cout << "  BACKSPACE - Cancel current word" << std::endl;
+    std::cout << "  S - Shuffle current player's rack" << std::endl;
+    std::cout << "  ESC - Pause/Quit game" << std::endl;
+    std::cout << "\n======== TESTING CONTROLS (when not playing) ========" << std::endl;
+    std::cout << "  H - Show this help" << std::endl;
+    std::cout << "  P - Print current game state" << std::endl;
+    std::cout << "  R - Reset/clear the board" << std::endl;
+    std::cout << "  T - Switch turns between players" << std::endl;
     std::cout << "===============================================" << std::endl;
 }
 
@@ -546,6 +631,12 @@ bool Game::handleMouseClick(int x, int y) {
         return false;
     }
 
+    int rackTileIndex = getRackTileIndexFromMouse(x, y);
+    if (rackTileIndex >= 0) {
+        selectTileFromRack(rackTileIndex);
+        return true;
+    }
+
     int row, col;
     if (gameRenderer->isPointInBoard(x, y, row, col)) {
         std::cout << "Clicked on board cell: (" << row << ", " << col << ")" << std::endl;
@@ -561,6 +652,43 @@ bool Game::handleMouseClick(int x, int y) {
     return false;
 }
 
+int Game::getRackTileIndexFromMouse(int mouseX, int mouseY) const {
+    const float TILE_SPACING = 45.0f;
+    const float RACK_PADDING = 20.0f;
+    const float TILE_SIZE = 40.0f;
+    
+    // Calculate rack position to match GameRenderer::renderPlayerRacks
+    const float boardHeight = 15 * 40; // BOARD_SIZE * CELL_SIZE
+    const float BOARD_OFFSET_X = 50.0f;
+    const float BOARD_OFFSET_Y = 90.0f;
+    
+    // Bottom rack position (current player when currentPlayerIndex == 0)
+    const float bottomRackY = BOARD_OFFSET_Y + boardHeight + RACK_PADDING;
+    // Top rack position (current player when currentPlayerIndex == 1)  
+    const float topRackY = BOARD_OFFSET_Y - TILE_SIZE - RACK_PADDING;
+    
+    // Determine which rack to check based on current player
+    float rackY = (currentPlayerIndex == 0) ? bottomRackY : topRackY;
+    float rackStartX = BOARD_OFFSET_X;
+    
+    // Check if mouse is in the rack area vertically
+    if (mouseY < rackY || mouseY > rackY + TILE_SIZE) {
+        return -1; // Not in rack area
+    }
+    
+    // Calculate which tile was clicked
+    const auto& rack = getCurrentPlayer().getRack();
+    for (size_t i = 0; i < rack.size(); i++) {
+        float tileX = rackStartX + (i * TILE_SPACING);
+        
+        if (mouseX >= tileX && mouseX <= tileX + TILE_SIZE) {
+            return static_cast<int>(i);
+        }
+    }
+    
+    return -1; // No tile clicked
+}
+
 void Game::startWordPlacement() {
     if (gameState == GameState::PLAYING) {
         currentWordPositions.clear();
@@ -569,15 +697,19 @@ void Game::startWordPlacement() {
         gameState = GameState::PLACING_TILES;
         
         std::cout << "Starting word placement..." << std::endl;
-        std::cout << "Click on board cells to place tiles from your rack" << std::endl;
+        std::cout << "Use 1-7 keys or LEFT/RIGHT arrows to select tiles" << std::endl;
+        std::cout << "Click on board cells to place selected tile" << std::endl;
         std::cout << "Press ENTER to confirm word, BACKSPACE to cancel" << std::endl;
         
-        // Show current player's rack
+        // Show current player's rack with selection indicator
         const auto& rack = getCurrentPlayer().getRack();
         std::cout << "Your tiles: ";
         for (size_t i = 0; i < rack.size(); i++) {
-            std::cout << "[" << i << "]" << rack[i].getLetter() 
-                     << "(" << rack[i].getPoints() << ") ";
+            if (i == selectedTileIndex) {
+                std::cout << "[>" << rack[i].getLetter() << "<](" << rack[i].getPoints() << ") ";
+            } else {
+                std::cout << "[" << rack[i].getLetter() << "](" << rack[i].getPoints() << ") ";
+            }
         }
         std::cout << std::endl;
     }
@@ -597,16 +729,49 @@ bool Game::placeTileFromRack(int row, int col) {
         return false;
     }
 
-    Tile tileToPlace = rack[0]; // For simplicity, use the first tile in the rack
+    if (selectedTileIndex >= static_cast<int>(rack.size())) {
+        selectedTileIndex = 0;
+    }
+
+    // Show which tile we're about to place
+    std::cout << "Placing tile: " << rack[selectedTileIndex].getLetter() 
+              << " from position " << selectedTileIndex + 1 << std::endl;
+
+
+    Tile tileToPlace = rack[selectedTileIndex];
 
     if (board.placeTile(row, col, tileToPlace)) {
-        currentPlayer.removeTileFromRack(0); // Remove the first tile
+        currentPlayer.removeTileFromRack(selectedTileIndex);
         currentWordPositions.push_back({row, col});
 
         std::cout << "Placed tile '" << tileToPlace.getLetter() 
                   << "' at (" << row << ", " << col << ")" << std::endl;
         std::cout << "Press ENTER to confirm word, or BACKSPACE to cancel" << std::endl;
         
+        // FIX: Update selectedTileIndex after tile removal
+        if (!rack.empty()) {
+            if (selectedTileIndex >= static_cast<int>(rack.size())) {
+                selectedTileIndex = rack.size() - 1;
+            }
+            
+            std::cout << "Updated rack: ";
+            for (size_t i = 0; i < rack.size(); i++) {
+                if (i == selectedTileIndex) {
+                    std::cout << "[>" << rack[i].getLetter() << "<] ";
+                } else {
+                    std::cout << "[" << rack[i].getLetter() << "] ";
+                }
+            }
+            std::cout << std::endl;
+            
+            std::cout << "Now selected: " << rack[selectedTileIndex].getLetter() 
+                      << " at position " << (selectedTileIndex + 1) << "/" << rack.size() << std::endl;
+        } else {
+            selectedTileIndex = 0;
+            std::cout << "Rack is now empty!" << std::endl;
+        }
+        
+        std::cout << "Press ENTER to confirm word, or BACKSPACE to cancel" << std::endl;
         gameState = GameState::PLACING_TILES;
         return true;
     }
@@ -723,34 +888,61 @@ bool Game::handleKeyPress(SDL_Keycode key) {
                 isRunning = false;
             }
             break;
+        case SDLK_SPACE:
+            if (gameState == GameState::PLAYING) {
+                skipTurn();
+            } else if (gameState == GameState::PAUSED) {
+                gameState = GameState::PLAYING;
+                std::cout << "Game resumed!" << std::endl;
+            }
+            break;
         case SDLK_S:
             getCurrentPlayer().shuffleRack();
-            std::cout << "🔀 " << getCurrentPlayer().getName() << "'s rack manually shuffled!" << std::endl;
+            {
+                const auto& rack = getCurrentPlayer().getRack();
+                // Keep the current selection position if it's still valid
+                if (selectedTileIndex >= static_cast<int>(rack.size())) {
+                    selectedTileIndex = rack.empty() ? 0 : rack.size() - 1;
+                }
+                
+                std::cout << getCurrentPlayer().getName() << "'s rack shuffled!" << std::endl;
+                
+                if (!rack.empty()) {
+                    std::cout << "Selected tile is now: " << rack[selectedTileIndex].getLetter() 
+                              << " at position " << (selectedTileIndex + 1) << "/" << rack.size() << std::endl;
+                    
+                    // Show the shuffled rack with selection indicator
+                    std::cout << "Rack: ";
+                    for (size_t i = 0; i < rack.size(); i++) {
+                        if (i == selectedTileIndex) {
+                            std::cout << "[>" << rack[i].getLetter() << "<] ";
+                        } else {
+                            std::cout << "[" << rack[i].getLetter() << "] ";
+                        }
+                    }
+                    std::cout << std::endl;
+                }
+            }
             break;
-            
-        // TESTING CONTROLS - Easy to understand
+        case SDLK_1: case SDLK_2: case SDLK_3: case SDLK_4:
+        case SDLK_5: case SDLK_6: case SDLK_7:
+            if (gameState == GameState::PLAYING || gameState == GameState::PLACING_TILES) {
+                int tileIndex = key - SDLK_1; // Convert SDLK_1 to 0, etc.
+                selectTileFromRack(tileIndex);
+            } else {
+                // Keep existing test functions for other states
+                if (key == SDLK_1) placeTestWord();
+                else if (key == SDLK_2) givePlayerTestTiles();
+                else if (key == SDLK_3) testScoring();
+                else if (key == SDLK_4) testDictionary();
+            }
+            break;
         case SDLK_H:
             printHelp();
             break;
             
         case SDLK_P:
             printGameState();
-            break;
-            
-        case SDLK_1:
-            placeTestWord();
-            break;
-            
-        case SDLK_2:
-            givePlayerTestTiles();
-            break;
-            
-        case SDLK_3:
-            testScoring();
-            break;
-            
-        case SDLK_4:
-            testDictionary();
             break;
             
         case SDLK_R:
@@ -760,6 +952,18 @@ bool Game::handleKeyPress(SDL_Keycode key) {
         case SDLK_T:
             switchTurn();
             std::cout << "Switched to Player " << (getCurrentPlayerIndex() + 1) << std::endl;
+            break;
+
+        case SDLK_LEFT:
+            if (gameState == GameState::PLAYING || gameState == GameState::PLACING_TILES) {
+                selectPreviousTile();
+            }
+            break;
+            
+        case SDLK_RIGHT:
+            if (gameState == GameState::PLAYING || gameState == GameState::PLACING_TILES) {
+                selectNextTile();
+            }
             break;
             
         default:
