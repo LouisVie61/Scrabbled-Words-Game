@@ -5,7 +5,7 @@
 #include <random>
 
 Game::Game() : gameState(GameState::MENU), gameMode(GameMode::HUMAN_VS_HUMAN),
-               currentPlayerIndex(0), gameOver(false), consecutivePasses(0),
+               currentPlayerIndex(0), gameOver(false), consecutivePasses(0), consecutiveFailures(0),
                window(nullptr), renderer(nullptr), isRunning(false),
                selectedTileIndex(0) {
 }
@@ -92,6 +92,7 @@ bool Game::setupGame(GameMode mode, const std::string& player1Name,
     currentPlayerIndex = 0;
     gameOver = false;
     consecutivePasses = 0;
+    consecutiveFailures = 0;
     gameState = GameState::PLAYING;
     
     return true;
@@ -241,17 +242,107 @@ void Game::endGame() {
     gameState = GameState::GAME_OVER;
     gameOver = true;
     
-    // Calculate final scores (subtract remaining tile points)
+    std::cout << "\nGAME OVER!" << std::endl;
+    std::cout << "========== FINAL SCORE CALCULATION ==========" << std::endl;
+    
+    // Show scores before final adjustments
+    std::cout << "Scores before final calculation:" << std::endl;
+    std::cout << player1.getName() << ": " << player1.getScore() << " points" << std::endl;
+    std::cout << player2.getName() << ": " << player2.getScore() << " points" << std::endl;
+    
+    // Calculate remaining tile penalties
+    int player1TilePenalty = 0;
+    int player2TilePenalty = 0;
+    
     for (const auto& tile : player1.getRack()) {
-        player1.subtractScore(tile.getPoints());
+        player1TilePenalty += tile.getPoints();
     }
     for (const auto& tile : player2.getRack()) {
-        player2.subtractScore(tile.getPoints());
+        player2TilePenalty += tile.getPoints();
     }
     
-    std::cout << "Game Over!" << std::endl;
-    std::cout << player1.getName() << ": " << player1.getScore() << std::endl;
-    std::cout << player2.getName() << ": " << player2.getScore() << std::endl;
+    std::cout << "\nRemaining tile penalties:" << std::endl;
+    std::cout << player1.getName() << ": -" << player1TilePenalty << " points" << std::endl;
+    std::cout << player2.getName() << ": -" << player2TilePenalty << " points" << std::endl;
+    
+    // Apply penalties
+    player1.subtractScore(player1TilePenalty);
+    player2.subtractScore(player2TilePenalty);
+    
+    // If someone used all their tiles, they get the opponent's tile points as bonus
+    if (player1.getRackSize() == 0 && player2TilePenalty > 0) {
+        player1.addScore(player2TilePenalty);
+        std::cout << player1.getName() << " gets +" << player2TilePenalty 
+                  << " bonus for using all tiles!" << std::endl;
+    } else if (player2.getRackSize() == 0 && player1TilePenalty > 0) {
+        player2.addScore(player1TilePenalty);
+        std::cout << player2.getName() << " gets +" << player1TilePenalty 
+                  << " bonus for using all tiles!" << std::endl;
+    }
+    
+    // Final scores
+    std::cout << "\n========== FINAL SCORES ==========" << std::endl;
+    std::cout << player1.getName() << ": " << player1.getScore() << " points" << std::endl;
+    std::cout << player2.getName() << ": " << player2.getScore() << " points" << std::endl;
+    
+    // Determine winner with tiebreaker rules
+    determineWinner();
+}
+
+void Game::determineWinner() {
+    int score1 = player1.getScore();
+    int score2 = player2.getScore();
+    
+    if (score1 > score2) {
+        std::cout << "\n" << player1.getName() << " WINS!" << std::endl;
+        std::cout << "Victory margin: " << (score1 - score2) << " points" << std::endl;
+    } else if (score2 > score1) {
+        std::cout << "\n" << player2.getName() << " WINS!" << std::endl;
+        std::cout << "Victory margin: " << (score2 - score1) << " points" << std::endl;
+    } else {
+        // Tie! Apply tiebreaker rules
+        std::cout << "\nSCORES ARE TIED!" << std::endl;
+        std::cout << "Applying tiebreaker rules..." << std::endl;
+        
+        // Tiebreaker 1: Player with fewer remaining tiles wins
+        int tiles1 = player1.getRackSize();
+        int tiles2 = player2.getRackSize();
+        
+        if (tiles1 < tiles2) {
+            std::cout << player1.getName() << " wins the tiebreaker!" << std::endl;
+            std::cout << "Reason: Fewer remaining tiles (" << tiles1 << " vs " << tiles2 << ")" << std::endl;
+            player1.addScore(1); // Add 1 point to break the tie visually
+        } else if (tiles2 < tiles1) {
+            std::cout << player2.getName() << " wins the tiebreaker!" << std::endl;
+            std::cout << "Reason: Fewer remaining tiles (" << tiles2 << " vs " << tiles1 << ")" << std::endl;
+            player2.addScore(1); // Add 1 point to break the tie visually
+        } else {
+            // Tiebreaker 2: Player with lower total value of remaining tiles wins
+            int value1 = 0, value2 = 0;
+            for (const auto& tile : player1.getRack()) {
+                value1 += tile.getPoints();
+            }
+            for (const auto& tile : player2.getRack()) {
+                value2 += tile.getPoints();
+            }
+            
+            if (value1 < value2) {
+                std::cout << player1.getName() << " wins the tiebreaker!" << std::endl;
+                std::cout << "Reason: Lower remaining tile value (" << value1 << " vs " << value2 << ")" << std::endl;
+                player1.addScore(1);
+            } else if (value2 < value1) {
+                std::cout << player2.getName() << " wins the tiebreaker!" << std::endl;
+                std::cout << "Reason: Lower remaining tile value (" << value2 << " vs " << value1 << ")" << std::endl;
+                player2.addScore(1);
+            } else {
+                // Ultimate tiebreaker: Random or declare true tie
+                std::cout << "TRUE TIE! Both players performed equally well!" << std::endl;
+                std::cout << "Both players are declared winners!" << std::endl;
+            }
+        }
+    }
+    
+    std::cout << "============================================" << std::endl;
 }
 
 const Player& Game::getCurrentPlayer() const {
@@ -390,6 +481,7 @@ void Game::skipTurn() {
         return;
     }
     
+    refreshBothPlayerRacks();
     switchTurn();
     
     std::cout << "Now it's " << getCurrentPlayer().getName() << "'s turn." << std::endl;
@@ -409,12 +501,8 @@ void Game::skipTurn() {
     // Reset selected tile index if it's out of bounds for new player
     if (selectedTileIndex >= static_cast<int>(rack.size()) && !rack.empty()) {
         selectedTileIndex = 0;
-        std::cout << "🎯 Selected: " << rack[selectedTileIndex].getLetter() 
+        std::cout << "Selected: " << rack[selectedTileIndex].getLetter() 
                   << " at position 1/" << rack.size() << std::endl;
-    }
-    
-    if (!checkGameEnd()) {
-        std::cout << "Game continues..." << std::endl;
     }
 }
 
@@ -497,6 +585,7 @@ void Game::printGameState() const {
     std::cout << "Player 2 (" << player2.getName() << "): " << player2.getScore() << " points" << std::endl;
     std::cout << "Tiles left in bag: " << tileBag.size() << std::endl;
     std::cout << "Consecutive passes: " << consecutivePasses << std::endl;
+    std::cout << "Consecutive failures: " << consecutiveFailures << std::endl; // Add this line
     
     // Show current player's tiles
     const auto& rack = (currentPlayerIndex == 0) ? player1.getRack() : player2.getRack();
@@ -799,15 +888,14 @@ bool Game::validateCurrentWord() {
         std::cout << "Score: " << wordScore << " points added!" << std::endl;
         std::cout << getCurrentPlayer().getName() 
                   << " total score: " << getCurrentPlayer().getScore() << std::endl;
-        
-        // Refill player's rack
-        refillPlayerRack();
 
         // End turn
         currentWordPositions.clear();
         gameState = GameState::PLAYING;
-        switchTurn();
         
+        // Handle successful turn completion
+        handleTurnCompletion(true);
+
         return true;
     } else {
         std::cout << word << "' is not in the dictionary!" << std::endl;
@@ -815,6 +903,23 @@ bool Game::validateCurrentWord() {
         
         // Return tiles to rack
         cancelWord();
+
+                consecutiveFailures++;
+        std::cout << "Consecutive word failures: " << consecutiveFailures 
+                  << "/" << MAX_CONSECUTIVE_FAILURES << std::endl;
+        
+        // Only refresh current player's rack (not both players)
+        getCurrentPlayer().shuffleRack();
+        
+        // Check if game should end due to too many failures
+        if (checkFailureGameEnd()) {
+            return false;
+        }
+        
+        // Stay on the same player - no turn switch
+        std::cout << "Turn remains with " << getCurrentPlayer().getName() 
+                  << " - try again!" << std::endl;
+
         return false;
     }
 }
@@ -834,21 +939,6 @@ void Game::cancelWord() {
     currentWordPositions.clear();
     gameState = GameState::PLAYING;
     std::cout << "Word cancelled. Tiles returned to rack." << std::endl;
-}
-
-void Game::refillPlayerRack() {
-    Player& currentPlayer = getCurrentPlayer();
-    int tilesNeeded = 7 - static_cast<int>(currentPlayer.getRack().size());
-    
-    std::cout << "Drawing " << tilesNeeded << " new tiles..." << std::endl;
-    
-    for (int i = 0; i < tilesNeeded && !tileBag.empty(); i++) {
-        Tile newTile = tileBag.front();
-        tileBag.pop();
-        currentPlayer.addTileToRack(newTile);
-        std::cout << "  • Drew: " << newTile.getLetter() 
-                  << "(" << newTile.getPoints() << ")" << std::endl;
-    }
 }
 
 std::string Game::buildWordFromPositions() const {
@@ -1012,4 +1102,56 @@ std::vector<TilePlacement> Game::getCurrentWord() const {
     }
     
     return placements; // Return by value
+}
+
+// refresh both player rack
+void Game::refreshBothPlayerRacks() {
+    std::cout << "Refreshing both players' racks..." << std::endl;
+    
+    // Shuffle both player racks
+    player1.shuffleRack();
+    player2.shuffleRack();
+    
+    // Fill both racks to 7 tiles if possible
+    while (player1.getRackSize() < 7 && !tileBag.empty()) {
+        drawTilesForPlayer(player1, 1);
+    }
+    while (player2.getRackSize() < 7 && !tileBag.empty()) {
+        drawTilesForPlayer(player2, 1);
+    }
+    
+    std::cout << "Both players' racks have been refreshed and filled!" << std::endl;
+}
+
+// Consolidated method to handle turn completion
+void Game::handleTurnCompletion(bool wordSuccess) {
+    if (wordSuccess) {
+        consecutivePasses = 0; // Reset pass counter on successful word
+        consecutiveFailures = 0; // Reset failure counter on successful word
+        
+        // Refresh both player racks after successful turn completion
+        refreshBothPlayerRacks();
+        
+        if (checkGameEnd()) {
+            return;
+        }
+        
+        switchTurn();
+    }
+}
+
+bool Game::checkFailureGameEnd() {
+    if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        std::cout << "🔚 Game ending due to " << MAX_CONSECUTIVE_FAILURES 
+                  << " consecutive word validation failures!" << std::endl;
+        
+        // The player who failed loses - give points to the other player
+        Player& winner = getOtherPlayer();
+        winner.addScore(50); // Bonus points for opponent's failure
+        
+        std::cout << winner.getName() << " wins due to opponent's failures!" << std::endl;
+        endGame();
+        return true;
+    }
+    return false;
 }

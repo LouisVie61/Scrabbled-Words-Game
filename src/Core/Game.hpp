@@ -47,7 +47,8 @@ private:
     GameMode gameMode;
     int currentPlayerIndex; // 0 = player1, 1 = player2
     bool gameOver;
-    int consecutivePasses; // Track consecutive passes/skips
+    int consecutivePasses;
+    int consecutiveFailures;
     
     // Add word placement tracking
     std::vector<std::pair<int, int>> currentWordPositions;
@@ -61,11 +62,12 @@ private:
     
     // UI component
     std::unique_ptr<GameRenderer> gameRenderer;
-    
+
     // Game constants
     static const int WINDOW_WIDTH = 1024;
     static const int WINDOW_HEIGHT = 768;
     static const int MAX_CONSECUTIVE_PASSES = 6; // End game after 6 passes
+    static const int MAX_CONSECUTIVE_FAILURES = 6;
     
     // Tile distribution for standard Scrabble
     void initializeTileBag();
@@ -110,9 +112,6 @@ public:
     // Game logic
     int calculateWordScore(const std::string& word, int startRow, int startCol, 
                           const std::string& direction) const;
-    std::vector<std::string> findWordsFormed(int startRow, int startCol, 
-                                            const std::string& word, 
-                                            const std::string& direction) const;
     
     // Rendering
     void render();
@@ -138,7 +137,6 @@ public:
     bool placeTileFromRack(int row, int col);
     bool validateCurrentWord();
     void cancelWord();
-    void refillPlayerRack();
     std::string buildWordFromPositions() const;
     
     // Event handling
@@ -155,4 +153,10 @@ public:
     const Player& getPlayer2() const;
     size_t getTileBagSize() const;
     std::vector<TilePlacement> getCurrentWord() const;
+
+    // Helpers methods
+    void refreshBothPlayerRacks();
+    void handleTurnCompletion(bool wordSuccess);
+    bool checkFailureGameEnd();
+    void determineWinner();
 };
