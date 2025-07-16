@@ -8,8 +8,10 @@
       "args": [
         "-I${workspaceFolder}/SDL3/SDL3-3.2.16/x86_64-w64-mingw32/include",
         "-I${workspaceFolder}/SDL3_image/SDL3_image-3.2.4/x86_64-w64-mingw32/include",
+        "-I${workspaceFolder}/SDL3_ttf/SDL3_ttf-3.2.2/x86_64-w64-mingw32/include",
         "-L${workspaceFolder}/SDL3/SDL3-3.2.16/x86_64-w64-mingw32/lib",
         "-L${workspaceFolder}/SDL3_image/SDL3_image-3.2.4/x86_64-w64-mingw32/lib",
+        "-L${workspaceFolder}/SDL3_ttf/SDL3_ttf-3.2.2/x86_64-w64-mingw32/lib",
         "-std=c++17",
         "main.cpp",
         "src/Core/Game.cpp",
@@ -20,6 +22,7 @@
         "src/UI/GameRenderer.cpp",
         "-lSDL3",
         "-lSDL3_image",
+        "-lSDL3_ttf",
         "-o",
         "main.exe"
       ],

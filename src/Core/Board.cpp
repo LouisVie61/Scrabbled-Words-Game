@@ -33,13 +33,14 @@ bool Board::removeTile(int row, int col) {
     if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {
         return false;
     }
-    if (tiles[row][col] == nullptr) {
-        return false;
+    
+    if (tiles[row][col] != nullptr) {
+        delete tiles[row][col];
+        tiles[row][col] = nullptr;
+        return true;
     }
-
-    delete tiles[row][col];
-    tiles[row][col] = nullptr;
-    return true;
+    
+    return false;
 }
 
 Tile* Board::getTile(int row, int col) const {

@@ -11,9 +11,17 @@
 
 class GameRenderer;
 
+struct TilePlacement {
+    int row;
+    int col;
+    const Tile* tile;
+};
+
 enum class GameState {
     MENU,
     PLAYING,
+    PLACING_TILES,
+    VALIDATING_WORD,
     GAME_OVER,
     PAUSED
 };
@@ -27,6 +35,7 @@ enum class GameMode {
 class Game {
 private:
     // Core game components
+    int selectedTileIndex; // Track selected tile index for placement
     Board board;
     Player player1;
     Player player2;
@@ -38,8 +47,14 @@ private:
     GameMode gameMode;
     int currentPlayerIndex; // 0 = player1, 1 = player2
     bool gameOver;
-    int consecutivePasses; // Track consecutive passes/skips
+    int consecutivePasses;
+    int consecutiveFailures;
     
+    // Add word placement tracking
+    std::vector<std::pair<int, int>> currentWordPositions;
+    std::string currentWord;
+    bool wordInProgress;
+
     // SDL components
     SDL_Window* window;
     SDL_Renderer* renderer;
@@ -47,11 +62,12 @@ private:
     
     // UI component
     std::unique_ptr<GameRenderer> gameRenderer;
-    
+
     // Game constants
     static const int WINDOW_WIDTH = 1024;
     static const int WINDOW_HEIGHT = 768;
     static const int MAX_CONSECUTIVE_PASSES = 6; // End game after 6 passes
+    static const int MAX_CONSECUTIVE_FAILURES = 6;
     
     // Tile distribution for standard Scrabble
     void initializeTileBag();
@@ -78,6 +94,9 @@ public:
     void endGame();
     
     // Turn management
+    const Player& getCurrentPlayer() const;
+    const Player& getOtherPlayer() const;
+    
     Player& getCurrentPlayer();
     Player& getOtherPlayer();
     void switchTurn();
@@ -93,12 +112,32 @@ public:
     // Game logic
     int calculateWordScore(const std::string& word, int startRow, int startCol, 
                           const std::string& direction) const;
-    std::vector<std::string> findWordsFormed(int startRow, int startCol, 
-                                            const std::string& word, 
-                                            const std::string& direction) const;
     
     // Rendering
     void render();
+    
+    // testing and debugging
+    void printHelp() const;
+    void printGameState() const;
+    void placeTestWord();
+    void givePlayerTestTiles();
+    void testScoring();
+    void testDictionary();
+    void resetBoard();
+
+    // Tracking tile
+    void selectTileFromRack(int index);
+    int getSelectedTileIndex() const;
+    void selectNextTile();
+    void selectPreviousTile();
+
+    // Game player's actions
+    void startWordPlacement();
+    int getRackTileIndexFromMouse(int mouseX, int mouseY) const;
+    bool placeTileFromRack(int row, int col);
+    bool validateCurrentWord();
+    void cancelWord();
+    std::string buildWordFromPositions() const;
     
     // Event handling
     void handleEvents();
@@ -113,4 +152,11 @@ public:
     const Player& getPlayer1() const;
     const Player& getPlayer2() const;
     size_t getTileBagSize() const;
+    std::vector<TilePlacement> getCurrentWord() const;
+
+    // Helpers methods
+    void refreshBothPlayerRacks();
+    void handleTurnCompletion(bool wordSuccess);
+    bool checkFailureGameEnd();
+    void determineWinner();
 };

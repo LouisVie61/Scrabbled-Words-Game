@@ -5,7 +5,8 @@
       "includePath": [
         "${workspaceFolder}/**",
         "C:/Users/ADMIN/Documents/GameSDLScrabble/SDL3/SDL3-3.2.16/x86_64-w64-mingw32/include",
-        "C:/Users/ADMIN/Documents/GameSDLScrabble/SDL3_image/SDL3_image-3.2.4/x86_64-w64-mingw32/include"
+        "C:/Users/ADMIN/Documents/GameSDLScrabble/SDL3_image/SDL3_image-3.2.4/x86_64-w64-mingw32/include",
+        "C:/Users/ADMIN/Documents/GameSDLScrabble/SDL3_ttf/SDL3_ttf-3.2.2/x86_64-w64-mingw32/include"
       ],
       "defines": [],
       "compilerPath": "C:/msys64/mingw64/bin/g++.exe",
