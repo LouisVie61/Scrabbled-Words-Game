@@ -932,7 +932,7 @@ void Game::cancelWord() {
         const Tile* tile = board.getTile(pos.first, pos.second);
         if (tile) {
             currentPlayer.addTileToRack(*tile);
-            board.removeTile(pos.first, pos.second); // You'll need to add this method
+            board.removeTile(pos.first, pos.second);
         }
     }
     
