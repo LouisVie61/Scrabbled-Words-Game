@@ -7,7 +7,7 @@
 Game::Game() : gameState(GameState::MENU), gameMode(GameMode::HUMAN_VS_HUMAN),
                currentPlayerIndex(0), gameOver(false), consecutivePasses(0), consecutiveFailures(0),
                window(nullptr), renderer(nullptr), isRunning(false),
-               selectedTileIndex(0) {
+               selectedTileIndex(0), mouseX(0), mouseY(0), mouseOnBoard(false) {
 }
 
 Game::~Game() {
@@ -525,31 +525,33 @@ void Game::render() {
         case GameState::PLAYING:
             gameRenderer->renderBoard(board);
             gameRenderer->renderPlayerRacks(player1, player2, currentPlayerIndex);
-            gameRenderer->renderScores(player1, player2);
             gameRenderer->renderGameState(*this);
             break;
         case GameState::PLACING_TILES:
             gameRenderer->renderBoard(board);
+            gameRenderer->renderPickedTiles(*this);
+            gameRenderer->renderTilePreview(*this, mouseX, mouseY);
+            gameRenderer->renderSelectedTileIndicator(*this);
             gameRenderer->renderPlayerRacks(player1, player2, currentPlayerIndex);
-            gameRenderer->renderScores(player1, player2);
-            gameRenderer->renderGameState(*this);
+            gameRenderer->renderPlayerInfo(player1, player2, currentPlayerIndex);
+            gameRenderer->renderCurrentWordScore(*this);
+            gameRenderer->renderPauseButton();
             break;
         case GameState::VALIDATING_WORD:
             gameRenderer->renderBoard(board);
             gameRenderer->renderPlayerRacks(player1, player2, currentPlayerIndex);
-            gameRenderer->renderScores(player1, player2);
             gameRenderer->renderGameState(*this);
             break;
         case GameState::GAME_OVER:
             gameRenderer->renderBoard(board);
-            gameRenderer->renderScores(player1, player2);
+            gameRenderer->renderPlayerInfo(player1, player2, currentPlayerIndex);
             gameRenderer->renderGameOver(player1, player2);
             break;
         case GameState::PAUSED:
-            gameRenderer->renderBoard(board);
+            gameRenderer->renderBoard(board);  // Render board first
             gameRenderer->renderPlayerRacks(player1, player2, currentPlayerIndex);
-            gameRenderer->renderScores(player1, player2);
-            gameRenderer->renderPauseScreen();
+            gameRenderer->renderPlayerInfo(player1, player2, currentPlayerIndex);
+            gameRenderer->renderPauseMenu();
             break;
     }
     
@@ -706,7 +708,33 @@ void Game::handleEvents() {
                 isRunning = false;
                 break;
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
-                handleMouseClick(event.button.x, event.button.y);
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    // Store mouse position for rendering
+                    mouseX = static_cast<int>(event.button.x);
+                    mouseY = static_cast<int>(event.button.y);
+                    
+                    if (gameState == GameState::PAUSED) {
+                        if (handlePauseMenuClick(mouseX, mouseY)) {
+                            break;
+                        }
+                        // If click was outside pause menu, continue game
+                        gameState = GameState::PLAYING;
+                        std::cout << "Game resumed by clicking outside pause menu!" << std::endl;
+                        break;
+                    }
+                    
+                    // Regular game clicks only when not paused
+                    if (gameState == GameState::PLAYING || gameState == GameState::PLACING_TILES) {
+                        handleMouseClick(mouseX, mouseY);
+                    }
+                }
+                break;
+            case SDL_EVENT_MOUSE_MOTION:
+                // Only update mouse position during active gameplay
+                if (gameState == GameState::PLAYING || gameState == GameState::PLACING_TILES) {
+                    mouseX = static_cast<int>(event.motion.x);
+                    mouseY = static_cast<int>(event.motion.y);
+                }
                 break;
             case SDL_EVENT_KEY_DOWN:
                 handleKeyPress(event.key.key);
@@ -716,16 +744,37 @@ void Game::handleEvents() {
 }
 
 bool Game::handleMouseClick(int x, int y) {
+    // Check pause button first (highest priority)
+    if (gameRenderer && gameRenderer->isPointInPauseButton(x, y)) {
+        if (gameState == GameState::PLAYING || gameState == GameState::PLACING_TILES) {
+            gameState = GameState::PAUSED;
+            std::cout << "Game paused via button click" << std::endl;
+            return true;
+        }
+    }
+    
+    // Handle pause menu clicks
+    if (gameState == GameState::PAUSED) {
+        return handlePauseMenuClick(x, y);
+    }
+    
+    // Handle menu clicks
+    if (gameState == GameState::MENU) {
+        gameState = GameState::PLAYING;
+        return true;
+    }
+    
+    // Handle game over screen
+    if (gameState == GameState::GAME_OVER) {
+        return false; // Let ESC handle exit
+    }
+    
+    // Only handle game clicks if we're in a playing state
     if (gameState != GameState::PLAYING && gameState != GameState::PLACING_TILES) {
         return false;
     }
-
-    int rackTileIndex = getRackTileIndexFromMouse(x, y);
-    if (rackTileIndex >= 0) {
-        selectTileFromRack(rackTileIndex);
-        return true;
-    }
-
+    
+    // Check if click is on board
     int row, col;
     if (gameRenderer->isPointInBoard(x, y, row, col)) {
         std::cout << "Clicked on board cell: (" << row << ", " << col << ")" << std::endl;
@@ -736,39 +785,87 @@ bool Game::handleMouseClick(int x, int y) {
 
         return placeTileFromRack(row, col);
     }
-
-    std::cout << "Clicked outside board at: (" << x << ", " << y << ")" << std::endl;
+    
+    // Check if click is on rack
+    int rackIndex = getRackTileIndexFromMouse(x, y);
+    if (rackIndex >= 0) {
+        selectTileFromRack(rackIndex);
+        return true;
+    }
+    
+    std::cout << "Clicked outside game area at: (" << x << ", " << y << ")" << std::endl;
     return false;
 }
 
+bool Game::handlePauseMenuClick(int x, int y) {
+    PauseMenuOption option = gameRenderer->getPauseMenuOption(x, y);
+    
+    switch (option) {
+        case PauseMenuOption::CONTINUE:
+            gameState = GameState::PLAYING;
+            std::cout << "Game resumed" << std::endl;
+            return true;
+            
+        case PauseMenuOption::SURRENDER:
+            // Current player surrenders
+            std::cout << getCurrentPlayer().getName() << " surrendered!" << std::endl;
+            getOtherPlayer().addScore(100); // Bonus for opponent
+            endGame();
+            return true;
+            
+        case PauseMenuOption::NEW_GAME:
+            std::cout << "Starting new game..." << std::endl;
+            startNewGame();
+            return true;
+            
+        case PauseMenuOption::QUIT:
+            std::cout << "Quitting game..." << std::endl;
+            isRunning = false;
+            return true;
+            
+        default:
+            return false;
+    }
+}
+
 int Game::getRackTileIndexFromMouse(int mouseX, int mouseY) const {
-    const float TILE_SPACING = 45.0f;
-    const float RACK_PADDING = 20.0f;
-    const float TILE_SIZE = 40.0f;
+    const float TILE_SPACING = 40.0f;
+    const float RACK_PADDING = 50.0f;
+    const float TILE_SIZE = 35.0f;
     
     // Calculate rack position to match GameRenderer::renderPlayerRacks
-    const float boardHeight = 15 * 40; // BOARD_SIZE * CELL_SIZE
-    const float BOARD_OFFSET_X = 50.0f;
-    const float BOARD_OFFSET_Y = 90.0f;
+    const float BOARD_SIZE = 15;
+    const float CELL_SIZE = 35;
+    const float BOARD_OFFSET_X = 150.0f;  // Updated to match GameRenderer
+    const float BOARD_OFFSET_Y = 80.0f;   // Updated to match GameRenderer
     
-    // Bottom rack position (current player when currentPlayerIndex == 0)
-    const float bottomRackY = BOARD_OFFSET_Y + boardHeight + RACK_PADDING;
-    // Top rack position (current player when currentPlayerIndex == 1)  
-    const float topRackY = BOARD_OFFSET_Y - TILE_SIZE - RACK_PADDING;
+    const float boardHeight = BOARD_SIZE * CELL_SIZE;
     
-    // Determine which rack to check based on current player
-    float rackY = (currentPlayerIndex == 0) ? bottomRackY : topRackY;
-    float rackStartX = BOARD_OFFSET_X;
+    const float rackY = BOARD_OFFSET_Y + boardHeight + 50.0f;
+    const float totalRackWidth = 7.0f * TILE_SPACING;
+    
+    // Center the rack but ensure it fits within screen bounds
+    float rackStartX = (WINDOW_WIDTH - totalRackWidth) / 2.0f;
+    
+    // Ensure minimum margins (same logic as renderPlayerRacks)
+    if (rackStartX < 30.0f) {
+        rackStartX = 30.0f;
+    } else if (rackStartX + totalRackWidth > WINDOW_WIDTH - 30.0f) {
+        rackStartX = WINDOW_WIDTH - totalRackWidth - 30.0f;
+    }
     
     // Check if mouse is in the rack area vertically
     if (mouseY < rackY || mouseY > rackY + TILE_SIZE) {
         return -1; // Not in rack area
     }
     
-    // Calculate which tile was clicked
     const auto& rack = getCurrentPlayer().getRack();
+    const float actualRackWidth = static_cast<float>(rack.size()) * TILE_SPACING;
+    const float centerOffset = (totalRackWidth - actualRackWidth) / 2.0f;
+    
+    // Calculate which tile was clicked    
     for (size_t i = 0; i < rack.size(); i++) {
-        float tileX = rackStartX + (i * TILE_SPACING);
+        float tileX = rackStartX + centerOffset + (i * TILE_SPACING);
         
         if (mouseX >= tileX && mouseX <= tileX + TILE_SIZE) {
             return static_cast<int>(i);
@@ -969,12 +1066,20 @@ bool Game::handleKeyPress(SDL_Keycode key) {
             break;
             
         case SDLK_ESCAPE:
-            if (gameState == GameState::PLACING_TILES) {
+            // Handle ESC key for pause/unpause
+            if (gameState == GameState::PAUSED) {
+                // If already paused, second ESC quits
+                std::cout << "Quitting game..." << std::endl;
+                isRunning = false;
+            } else if (gameState == GameState::PLACING_TILES) {
+                // Cancel current word placement first
                 cancelWord();
             } else if (gameState == GameState::PLAYING) {
+                // Pause the game
                 gameState = GameState::PAUSED;
-                std::cout << "Game paused. Press ESC again to quit." << std::endl;
+                std::cout << "Game paused. Click menu options or press ESC again to quit." << std::endl;
             } else {
+                // Other states - just quit
                 isRunning = false;
             }
             break;
@@ -1085,6 +1190,10 @@ const Player& Game::getPlayer2() const {
 
 int Game::getCurrentPlayerIndex() const {
     return currentPlayerIndex;
+}
+
+size_t Game::getTileBagSize() const {
+    return tileBag.size();
 }
 
 std::vector<TilePlacement> Game::getCurrentWord() const {
