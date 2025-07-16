@@ -32,6 +32,13 @@ enum class GameMode {
     AI_VS_AI
 };
 
+enum class PauseMenuOption {
+    CONTINUE,
+    SURRENDER,
+    NEW_GAME,
+    QUIT
+};
+
 class Game {
 private:
     // Core game components
@@ -63,16 +70,19 @@ private:
     // UI component
     std::unique_ptr<GameRenderer> gameRenderer;
 
-    // Game constants
-    static const int WINDOW_WIDTH = 1024;
-    static const int WINDOW_HEIGHT = 768;
-    static const int MAX_CONSECUTIVE_PASSES = 6; // End game after 6 passes
+    // Game constants - updated to match GameRenderer
+    static const int WINDOW_WIDTH = 1200;
+    static const int WINDOW_HEIGHT = 800;
+    static const int MAX_CONSECUTIVE_PASSES = 6;
     static const int MAX_CONSECUTIVE_FAILURES = 6;
     
     // Tile distribution for standard Scrabble
     void initializeTileBag();
     bool drawTilesForPlayer(Player& player, int count = 1);
     void fillPlayerRacks();
+
+    int mouseX, mouseY;
+    bool mouseOnBoard;
     
 public:
     Game();
@@ -86,6 +96,7 @@ public:
     bool setupGame(GameMode mode, const std::string& player1Name, 
                    const std::string& player2Name = "Computer");
     bool loadDictionary(const std::string& filename);
+    bool handlePauseMenuClick(int x, int y);
     
     // Game flow
     void run();

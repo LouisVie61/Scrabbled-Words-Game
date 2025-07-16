@@ -1,6 +1,7 @@
 #include "GameRenderer.hpp"
 #include <iostream>
 #include <vector>
+#include <cmath>
 
 // === STATIC COLOR DEFINITIONS ===
 const SDL_Color GameRenderer::BOARD_COLOR = {139, 69, 19, 255};      // Brown
@@ -9,23 +10,27 @@ const SDL_Color GameRenderer::TEXT_COLOR = {0, 0, 0, 255};           // Black
 const SDL_Color GameRenderer::WHITE_COLOR = {255, 255, 255, 255};    // White
 const SDL_Color GameRenderer::BLACK_COLOR = {0, 0, 0, 255};          // Black
 const SDL_Color GameRenderer::YELLOW_COLOR = {255, 255, 0, 150};     // Yellow (transparent)
+const SDL_Color GameRenderer::BLUE_COLOR = {100, 149, 237, 255};     // Cornflower Blue
+const SDL_Color GameRenderer::GREEN_COLOR = {144, 238, 144, 255};    // Light Green
+const SDL_Color GameRenderer::RED_COLOR = {220, 20, 60, 255};        // Crimson
 
 const SDL_Color GameRenderer::SPECIAL_SQUARE_COLORS[] = {
     {255, 255, 255, 255},    // NORMAL - White
-    {173, 216, 230, 255},    // DOUBLE_LETTER - Light Blue  
-    {30, 144, 255, 255},     // TRIPLE_LETTER - Dodger Blue (darker)
-    {255, 182, 193, 255},    // DOUBLE_WORD - Light Pink
-    {220, 20, 60, 255},      // TRIPLE_WORD - Crimson (darker red)
-    {255, 215, 0, 255}       // CENTER - Gold
+    {200, 230, 255, 255},    // DOUBLE_LETTER - Lighter Blue  
+    {100, 180, 255, 255},    // TRIPLE_LETTER - Medium Blue
+    {255, 200, 220, 255},    // DOUBLE_WORD - Lighter Pink
+    {255, 150, 150, 255},    // TRIPLE_WORD - Lighter Red
+    {255, 235, 100, 255}     // CENTER - Lighter Gold
 };
 
-// Define font sizes (missing from header but used in implementation)
-static const int NORMAL_FONT_SIZE = 16;
-static const int SMALL_FONT_SIZE = 12;
+// Define font sizes
+static const int TITLE_FONT_SIZE = 24;
+static const int NORMAL_FONT_SIZE = 18;  // Increased for better readability
+static const int SMALL_FONT_SIZE = 14;   // Increased for better readability
 
 // === CONSTRUCTOR & DESTRUCTOR ===
 GameRenderer::GameRenderer(SDL_Renderer* renderer, SDL_Window* window) 
-    : renderer(renderer), window(window), font(nullptr), smallFont(nullptr) {
+    : renderer(renderer), window(window), font(nullptr), smallFont(nullptr), titleFont(nullptr) {
     initializeFonts();
 }
 
@@ -48,6 +53,11 @@ void GameRenderer::cleanupFonts() {
     }
     if (smallFont) {
         TTF_CloseFont(smallFont);
+        smallFont = nullptr;
+    }
+    if (titleFont) {
+        TTF_CloseFont(titleFont);
+        titleFont = nullptr;
     }
     TTF_Quit();
 }
@@ -57,8 +67,11 @@ void GameRenderer::renderGameState(const Game& game) {
     clear();    
     renderBoard(game.getBoard());
     renderPickedTiles(game);
+    renderSelectedTileIndicator(game);
     renderPlayerRacks(game.getPlayer1(), game.getPlayer2(), game.getCurrentPlayerIndex());
-    renderScores(game.getPlayer1(), game.getPlayer2());
+    renderPlayerInfo(game.getPlayer1(), game.getPlayer2(), game.getCurrentPlayerIndex());
+    renderCurrentWordScore(game);
+    renderPauseButton();
     present();
 }
 
@@ -96,29 +109,273 @@ void GameRenderer::renderPickedTiles(const Game& game) {
     }
 }
 
-void GameRenderer::renderPlayerRacks(const Player& player1, const Player& player2, int currentPlayer) {
+void GameRenderer::renderSelectedTileIndicator(const Game& game) {
+    if (game.getGameState() != GameState::PLAYING && game.getGameState() != GameState::PLACING_TILES) {
+        return;
+    }
+    
+    const Player& currentPlayer = (game.getCurrentPlayerIndex() == 0) ? game.getPlayer1() : game.getPlayer2();
+    const auto& rack = currentPlayer.getRack();
+    int selectedIndex = game.getSelectedTileIndex();
+    
+    if (rack.empty() || selectedIndex < 0 || selectedIndex >= static_cast<int>(rack.size())) {
+        return;
+    }
+    
+    const float boardWidth = BOARD_SIZE * CELL_SIZE;
     const float boardHeight = BOARD_SIZE * CELL_SIZE;
-    const float bottomY = BOARD_OFFSET_Y + boardHeight + RACK_PADDING;
-    const float topY = BOARD_OFFSET_Y - CELL_SIZE - RACK_PADDING;
+    const float rackY = BOARD_OFFSET_Y + boardHeight + 50.0f;
+    const float totalRackWidth = 7.0f * TILE_SPACING;
+    
+    float rackStartX = (WINDOW_WIDTH - totalRackWidth) / 2.0f;
+    
+    if (rackStartX < 30.0f) {
+        rackStartX = 30.0f;
+    } else if (rackStartX + totalRackWidth > WINDOW_WIDTH - 30.0f) {
+        rackStartX = WINDOW_WIDTH - totalRackWidth - 30.0f;
+    }
+    
+    const float actualRackWidth = static_cast<float>(rack.size()) * TILE_SPACING;
+    const float centerOffset = (totalRackWidth - actualRackWidth) / 2.0f;
+    
+    const float selectedTileX = rackStartX + centerOffset + static_cast<float>(selectedIndex) * TILE_SPACING;
+    
+    SDL_SetRenderDrawColor(renderer, 255, 215, 0, 180); // Bright gold
+    for (int i = 0; i < 3; i++) {
+        const SDL_FRect glowRect = {
+            selectedTileX - 3.0f - i, rackY - 3.0f - i,
+            CELL_SIZE + 6.0f + 2*i, CELL_SIZE + 6.0f + 2*i
+        };
+        SDL_RenderRect(renderer, &glowRect);
+    }
+    
+    SDL_SetRenderDrawColor(renderer, 255, 140, 0, 255); // Dark orange
+    for (int i = 0; i < 2; i++) {
+        const SDL_FRect innerBorder = {
+            selectedTileX - 1.0f - i, rackY - 1.0f - i,
+            CELL_SIZE + 2.0f + 2*i, CELL_SIZE + 2.0f + 2*i
+        };
+        SDL_RenderRect(renderer, &innerBorder);
+    }
+    
+    const float tileCenterX = selectedTileX + (CELL_SIZE / 2.0f);
+    float textX = tileCenterX - 40.0f;
+    float textY = rackY - 40.0f;
+    
+    if (textX < 10.0f) {
+        textX = 10.0f;
+    } else if (textX + 80.0f > WINDOW_WIDTH - 10.0f) {
+        textX = WINDOW_WIDTH - 90.0f;
+    }
 
-    renderPlayerRack(player1, BOARD_OFFSET_X, bottomY, currentPlayer == 0);
-    renderPlayerRack(player2, BOARD_OFFSET_X, topY, currentPlayer == 1);
+    int textW, textH;
+    if (font && TTF_GetStringSize(font, "SELECTED", 0, &textW, &textH) == 0) {
+    } else {
+        // Fallback dimensions
+        textW = 85;
+        textH = 25;
+    }
+    
+    const float bgWidth = static_cast<float>(textW) + 10.0f;  // Text width + padding
+    const float bgHeight = static_cast<float>(textH) + 6.0f;  // Text height + padding
+    
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 220); // Semi-transparent white background
+    const SDL_FRect textBgRect = {textX - 5.0f, textY - 3.0f, bgWidth, bgHeight};
+    SDL_RenderFillRect(renderer, &textBgRect);
+    
+    // Red border
+    SDL_SetRenderDrawColor(renderer, 200, 0, 0, 255);
+    SDL_RenderRect(renderer, &textBgRect);
+    
+    float centeredTextX = textBgRect.x + (bgWidth - textW) / 2.0f;
+    float centeredTextY = textBgRect.y + (bgHeight - textH) / 2.0f;
+    
+    renderText("SELECTED", centeredTextX, centeredTextY, RED_COLOR, font);
+    
+    SDL_SetRenderDrawColor(renderer, RED_COLOR.r, RED_COLOR.g, RED_COLOR.b, RED_COLOR.a);
+    const SDL_FRect underlineRect = {textX, textY + 18.0f, 80.0f, 2.0f};
+    SDL_RenderFillRect(renderer, &underlineRect);
+    
+    const float arrowY = rackY - 12.0f;           // Arrow tip position
+    const float arrowLength = 8.0f;              // Arrow shaft length
+    const float arrowWidth = 6.0f;               // Arrow head width
+    
+    // Set arrow color
+    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Bright red
+    
+    // Draw arrow shaft (vertical line pointing down)
+    SDL_RenderLine(renderer, 
+                   tileCenterX, arrowY - arrowLength,   // Start point (top)
+                   tileCenterX, arrowY);                // End point (tip)
+    
+    // Draw left arrow head line
+    SDL_RenderLine(renderer, 
+                   tileCenterX, arrowY,                 // Arrow tip
+                   tileCenterX - arrowWidth, arrowY - arrowWidth); // Left wing
+    
+    // Draw right arrow head line  
+    SDL_RenderLine(renderer, 
+                   tileCenterX, arrowY,                 // Arrow tip
+                   tileCenterX + arrowWidth, arrowY - arrowWidth); // Right wing
+}
+
+void GameRenderer::renderTilePreview(const Game& game, int mouseX, int mouseY) {
+    if (game.getGameState() != GameState::PLAYING && game.getGameState() != GameState::PLACING_TILES) {
+        return;
+    }
+    
+    // Check if mouse is over board
+    int row, col;
+    if (!isPointInBoard(mouseX, mouseY, row, col)) {
+        return;
+    }
+    
+    // Check if cell is already occupied
+    if (game.getBoard().getTile(row, col) != nullptr) {
+        return;
+    }
+    
+    // Get current player and selected tile
+    const Player& currentPlayer = (game.getCurrentPlayerIndex() == 0) ? game.getPlayer1() : game.getPlayer2();
+    const auto& rack = currentPlayer.getRack();
+    int selectedIndex = game.getSelectedTileIndex();
+    
+    if (rack.empty() || selectedIndex < 0 || selectedIndex >= static_cast<int>(rack.size())) {
+        return;
+    }
+    
+    // Get the cell position
+    const SDL_FRect cellRect = getBoardCellRect(row, col);
+    
+    // Draw preview background (semi-transparent)
+    SDL_SetRenderDrawColor(renderer, 200, 255, 200, 120); // Light green with transparency
+    SDL_RenderFillRect(renderer, &cellRect);
+    
+    // Draw preview border
+    SDL_SetRenderDrawColor(renderer, 0, 200, 0, 180); // Green border
+    for (int i = 0; i < 2; i++) {
+        const SDL_FRect borderRect = {
+            cellRect.x - i, cellRect.y - i,
+            cellRect.w + 2*i, cellRect.h + 2*i
+        };
+        SDL_RenderRect(renderer, &borderRect);
+    }
+    
+    // Draw preview tile (slightly transparent)
+    const Tile& selectedTile = rack[selectedIndex];
+    
+    // Tile background (semi-transparent)
+    SDL_SetRenderDrawColor(renderer, TILE_COLOR.r, TILE_COLOR.g, TILE_COLOR.b, 180);
+    const SDL_FRect tileRect = {cellRect.x + 4.0f, cellRect.y + 4.0f, cellRect.w - 8.0f, cellRect.h - 8.0f};
+    SDL_RenderFillRect(renderer, &tileRect);
+    
+    // Tile border
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
+    SDL_RenderRect(renderer, &tileRect);
+    
+    // Letter and points (slightly faded)
+    const std::string letter(1, selectedTile.getLetter());
+    float letterX = cellRect.x + (cellRect.w / 2.0f) - 7.0f;
+    float letterY = cellRect.y + 7.0f;
+    
+    // Create a faded color for preview text
+    SDL_Color fadedColor = {TEXT_COLOR.r, TEXT_COLOR.g, TEXT_COLOR.b, 180};
+    renderText(letter, letterX, letterY, fadedColor, font);
+    
+    const std::string points = std::to_string(selectedTile.getPoints());
+    float pointsX = cellRect.x + cellRect.w - 15.0f;
+    float pointsY = cellRect.y + cellRect.h - 18.0f;
+    renderText(points, pointsX, pointsY, fadedColor, smallFont);
+    
+    // Add "PREVIEW" label
+    renderText("PREVIEW", cellRect.x - 20.0f, cellRect.y - 20.0f, GREEN_COLOR, smallFont);
+}
+
+void GameRenderer::renderPlayerRacks(const Player& player1, const Player& player2, int currentPlayer) {
+    const float boardWidth = BOARD_SIZE * CELL_SIZE;
+    const float boardHeight = BOARD_SIZE * CELL_SIZE;
+    
+    const float rackY = BOARD_OFFSET_Y + boardHeight + 50.0f;
+    const float totalRackWidth = 7.0f * TILE_SPACING;
+    const float availableWidth = WINDOW_WIDTH - 2 * 30.0f;
+    
+    // Center the rack but ensure it fits within screen bounds
+    float rackStartX = (WINDOW_WIDTH - totalRackWidth) / 2.0f;
+    
+    // Render current player's rack (highlighted)
+    const Player& currentPlayerRef = (currentPlayer == 0) ? player1 : player2;
+    renderPlayerRack(currentPlayerRef, rackStartX, rackY, true);
+}
+
+void GameRenderer::renderPlayerInfo(const Player& player1, const Player& player2, int currentPlayer) {
+    const float boardWidth = BOARD_SIZE * CELL_SIZE;
+    const float rightSideX = BOARD_OFFSET_X + boardWidth + PLAYER_INFO_PADDING;
+    
+    // Player 1 info (top right)
+    const SDL_FRect player1Rect = {
+        rightSideX, 
+        BOARD_OFFSET_Y, 
+        PLAYER_INFO_WIDTH, 
+        PLAYER_INFO_HEIGHT
+    };
+    renderPlayerInfoBox(player1, player1Rect, true, currentPlayer == 0);
+    
+    // Player 2 info (below player 1)
+    const SDL_FRect player2Rect = {
+        rightSideX, 
+        BOARD_OFFSET_Y + PLAYER_INFO_HEIGHT + PLAYER_INFO_PADDING, 
+        PLAYER_INFO_WIDTH, 
+        PLAYER_INFO_HEIGHT
+    };
+    renderPlayerInfoBox(player2, player2Rect, true, currentPlayer == 1);
+}
+
+void GameRenderer::renderCurrentWordScore(const Game& game) {
+    const auto& currentWord = game.getCurrentWord();
+    if (currentWord.empty()) return;
+    
+    // Calculate the score for current word being formed
+    int currentWordScore = 0;
+    std::string wordText = "";
+    
+    // Build the word string and calculate score
+    for (const auto& placement : currentWord) {
+        if (placement.tile) {
+            wordText += placement.tile->getLetter();
+            currentWordScore += placement.tile->getPoints();
+        }
+    }
+    
+    if (!wordText.empty()) {
+        // Position score display below the rack area
+        const float boardWidth = BOARD_SIZE * CELL_SIZE;
+        const float boardHeight = BOARD_SIZE * CELL_SIZE;
+        const float scoreY = BOARD_OFFSET_Y + boardHeight + RACK_PADDING + 100.0f;
+        const float scoreX = BOARD_OFFSET_X + (boardWidth / 2) - 100.0f;
+        
+        // Background for score display
+        SDL_SetRenderDrawColor(renderer, 240, 240, 240, 200);
+        const SDL_FRect scoreRect = {scoreX, scoreY, 200.0f, SCORE_SECTION_HEIGHT};
+        SDL_RenderFillRect(renderer, &scoreRect);
+        
+        SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
+        SDL_RenderRect(renderer, &scoreRect);
+        
+        // Current word text
+        renderText("Current Word:", scoreX + 10.0f, scoreY + 10.0f, BLACK_COLOR, smallFont);
+        renderText(wordText, scoreX + 10.0f, scoreY + 25.0f, BLUE_COLOR, font);
+        
+        // Current score
+        const std::string scoreText = "Points: " + std::to_string(currentWordScore);
+        renderText(scoreText, scoreX + 10.0f, scoreY + 40.0f, GREEN_COLOR, smallFont);
+    }
 }
 
 void GameRenderer::renderScores(const Player& player1, const Player& player2) {
-    const float rackWidth = 7 * TILE_SPACING;
-    const float scoreX = BOARD_OFFSET_X + rackWidth + RACK_PADDING;
-    const float boardHeight = BOARD_SIZE * CELL_SIZE;
-    
-    // Player 1 score (bottom)
-    const float bottomY = BOARD_OFFSET_Y + boardHeight + RACK_PADDING;
-    const SDL_FRect scoreRect1 = {scoreX, bottomY, SCORE_WIDTH, SCORE_HEIGHT};
-    renderPlayerScore(player1, scoreRect1);
-    
-    // Player 2 score (top)
-    const float topY = BOARD_OFFSET_Y - SCORE_HEIGHT - RACK_PADDING;
-    const SDL_FRect scoreRect2 = {scoreX, topY, SCORE_WIDTH, SCORE_HEIGHT};
-    renderPlayerScore(player2, scoreRect2);
+    // This method can be simplified since we now have renderPlayerInfo
+    // which includes score information. For now, make it empty or call renderPlayerInfo
+    // Since scores are already rendered in renderPlayerInfo, we can leave this empty
+    // or use it for additional score displays if needed
 }
 
 // === SCREEN RENDERING METHODS ===
@@ -127,10 +384,112 @@ void GameRenderer::renderMenu() {
     renderMenuContent();
 }
 
+void GameRenderer::renderPauseButton() {
+    const float buttonX = WINDOW_WIDTH - PAUSE_BUTTON_SIZE - PAUSE_BUTTON_MARGIN;
+    const float buttonY = PAUSE_BUTTON_MARGIN;
+    
+    // Enhanced button background with gradient effect
+    SDL_SetRenderDrawColor(renderer, 60, 60, 60, 220);
+    const SDL_FRect buttonRect = {buttonX, buttonY, PAUSE_BUTTON_SIZE, PAUSE_BUTTON_SIZE};
+    SDL_RenderFillRect(renderer, &buttonRect);
+    
+    // Button border - thicker and more visible
+    SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
+    for (int i = 0; i < 2; i++) {
+        const SDL_FRect borderRect = {
+            buttonX - i, buttonY - i,
+            PAUSE_BUTTON_SIZE + 2*i, PAUSE_BUTTON_SIZE + 2*i
+        };
+        SDL_RenderRect(renderer, &borderRect);
+    }
+    
+    // Pause symbol (two vertical bars) - larger and better positioned
+    SDL_SetRenderDrawColor(renderer, WHITE_COLOR.r, WHITE_COLOR.g, WHITE_COLOR.b, WHITE_COLOR.a);
+    const SDL_FRect bar1 = {buttonX + 10, buttonY + 6, 8, 28};
+    const SDL_FRect bar2 = {buttonX + 22, buttonY + 6, 8, 28};
+    SDL_RenderFillRect(renderer, &bar1);
+    SDL_RenderFillRect(renderer, &bar2);
+    
+    // Add "PAUSE" label below button
+    renderText("PAUSE", buttonX - 5, buttonY + PAUSE_BUTTON_SIZE + 5, BLACK_COLOR, smallFont);
+}
+
+// FIXED: Prevent flickering in pause menu
+void GameRenderer::renderPauseMenu() {
+    // Semi-transparent overlay
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
+    const SDL_FRect overlay = {0.0f, 0.0f, static_cast<float>(WINDOW_WIDTH), static_cast<float>(WINDOW_HEIGHT)};
+    SDL_RenderFillRect(renderer, &overlay);
+    
+    // Menu background with better styling
+    const float menuX = (WINDOW_WIDTH - PAUSE_MENU_WIDTH) / 2.0f;
+    const float menuY = (WINDOW_HEIGHT - PAUSE_MENU_HEIGHT) / 2.0f;
+    
+    // Drop shadow
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 100);
+    const SDL_FRect shadowRect = {menuX + 5, menuY + 5, PAUSE_MENU_WIDTH, PAUSE_MENU_HEIGHT};
+    SDL_RenderFillRect(renderer, &shadowRect);
+    
+    // Main menu background
+    SDL_SetRenderDrawColor(renderer, 250, 250, 250, 255);
+    const SDL_FRect menuRect = {menuX, menuY, PAUSE_MENU_WIDTH, PAUSE_MENU_HEIGHT};
+    SDL_RenderFillRect(renderer, &menuRect);
+    
+    // Border
+    SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
+    for (int i = 0; i < 3; i++) {
+        const SDL_FRect borderRect = {
+            menuX - i, menuY - i,
+            PAUSE_MENU_WIDTH + 2*i, PAUSE_MENU_HEIGHT + 2*i
+        };
+        SDL_RenderRect(renderer, &borderRect);
+    }
+    
+    // Menu title with better positioning
+    renderText("GAME PAUSED", menuX + 80, menuY + 25, BLACK_COLOR, titleFont);
+    
+    // Menu options with proper spacing
+    const std::vector<std::pair<std::string, float>> options = {
+        {"Continue", menuY + 70},
+        {"Surrender", menuY + 100},
+        {"New Game", menuY + 130},
+        {"Quit", menuY + 160}
+    };
+    
+    for (const auto& [text, y] : options) {
+        renderText(text, menuX + 90, y, BLACK_COLOR, font);
+    }
+}
+
+bool GameRenderer::isPointInPauseButton(int x, int y) const {
+    const float buttonX = WINDOW_WIDTH - PAUSE_BUTTON_SIZE - PAUSE_BUTTON_MARGIN;
+    const float buttonY = PAUSE_BUTTON_MARGIN;
+    
+    return x >= static_cast<int>(buttonX) && x <= static_cast<int>(buttonX + PAUSE_BUTTON_SIZE) &&
+           y >= static_cast<int>(buttonY) && y <= static_cast<int>(buttonY + PAUSE_BUTTON_SIZE);
+}
+
+PauseMenuOption GameRenderer::getPauseMenuOption(int x, int y) const {
+    const float menuX = (WINDOW_WIDTH - PAUSE_MENU_WIDTH) / 2.0f;
+    const float menuY = (WINDOW_HEIGHT - PAUSE_MENU_HEIGHT) / 2.0f;
+    
+    if (x < menuX || x > menuX + PAUSE_MENU_WIDTH || y < menuY || y > menuY + PAUSE_MENU_HEIGHT) {
+        return static_cast<PauseMenuOption>(-1); // Invalid
+    }
+    
+    const float relativeY = y - menuY;
+    if (relativeY >= 70 && relativeY < 100) return PauseMenuOption::CONTINUE;
+    if (relativeY >= 100 && relativeY < 130) return PauseMenuOption::SURRENDER;
+    if (relativeY >= 130 && relativeY < 160) return PauseMenuOption::NEW_GAME;
+    if (relativeY >= 160 && relativeY < 190) return PauseMenuOption::QUIT;
+    
+    return static_cast<PauseMenuOption>(-1); // Invalid
+}
+
 void GameRenderer::renderGameOver(const Player& player1, const Player& player2) {
     // Semi-transparent overlay
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 150);
-    const SDL_FRect overlay = {0.0f, 0.0f, 1024.0f, 768.0f};
+    const SDL_FRect overlay = {0.0f, 0.0f, static_cast<float>(WINDOW_WIDTH), static_cast<float>(WINDOW_HEIGHT)};
     SDL_RenderFillRect(renderer, &overlay);
     
     // Game over box
@@ -167,7 +526,7 @@ void GameRenderer::renderGameOver(const Player& player1, const Player& player2) 
 void GameRenderer::renderPauseScreen() {
     // Semi-transparent overlay
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 150);
-    const SDL_FRect overlay = {0.0f, 0.0f, 1024.0f, 768.0f};
+    const SDL_FRect overlay = {0.0f, 0.0f, static_cast<float>(WINDOW_WIDTH), static_cast<float>(WINDOW_HEIGHT)};
     SDL_RenderFillRect(renderer, &overlay);
     
     // Pause box
@@ -258,13 +617,43 @@ void GameRenderer::renderSingleSpecialSquare(int row, int col, SpecialSquare spe
     const SDL_FRect rect = {x + 1.0f, y + 1.0f, CELL_SIZE - 2.0f, CELL_SIZE - 2.0f};
     SDL_RenderFillRect(renderer, &rect);
     
+    // Add bold border for special squares
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    for (int i = 0; i < 2; i++) {
+        const SDL_FRect borderRect = {
+            x + 1.0f - i, y + 1.0f - i,
+            CELL_SIZE - 2.0f + 2*i, CELL_SIZE - 2.0f + 2*i
+        };
+        SDL_RenderRect(renderer, &borderRect);
+    }
+    
     renderSpecialSquareText(x, y, special);
 }
 
 void GameRenderer::renderSpecialSquareText(float x, float y, SpecialSquare special) {
     const auto [label, textColor] = getSpecialSquareTextInfo(special);
     if (!label.empty()) {
-        renderText(label, x + TEXT_OFFSET_X, y + TEXT_OFFSET_Y, textColor, smallFont);
+        int textW, textH;
+        if (smallFont && TTF_GetStringSize(smallFont, label.c_str(), 0, &textW, &textH) == 0) {
+            // Center the text perfectly
+            float textX = x + (CELL_SIZE - textW) / 2.0f;
+            float textY = y + (CELL_SIZE - textH) / 2.0f;
+
+            renderText(label, textX, textY, BLACK_COLOR, smallFont);
+            renderText(label, textX + 1.0f, textY, BLACK_COLOR, smallFont);
+            renderText(label, textX, textY + 1.0f, BLACK_COLOR, smallFont);
+            renderText(label, textX + 1.0f, textY + 1.0f, BLACK_COLOR, smallFont);
+        } else {
+            // Fallback positioning with bold effect
+            float textX = x + (CELL_SIZE / 2.0f) - 8.0f;
+            float textY = y + (CELL_SIZE / 2.0f) - 6.0f;
+            
+            // Bold effect for fallback text
+            renderText(label, textX, textY, BLACK_COLOR, smallFont);
+            renderText(label, textX + 1.0f, textY, BLACK_COLOR, smallFont);
+            renderText(label, textX, textY + 1.0f, BLACK_COLOR, smallFont);
+            renderText(label, textX + 1.0f, textY + 1.0f, BLACK_COLOR, smallFont);
+        }
     }
 }
 
@@ -294,15 +683,41 @@ void GameRenderer::renderTile(float x, float y, const Tile* tile) {
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
     SDL_RenderRect(renderer, &tileRect);
     
-    // Render letter (large)
+    const float tileX = tileRect.x;
+    const float tileY = tileRect.y;
+    const float tileWidth = tileRect.w;
+    const float tileHeight = tileRect.h;
+
     const std::string letter(1, tile->getLetter());
-    renderText(letter, x + 8.0f, y + 5.0f, BLACK_COLOR, font);
     
-    // Render points (small, bottom right)
+    int textW, textH;
+    if (font && TTF_GetStringSize(font, letter.c_str(), 0, &textW, &textH) == 0) {
+        // Position letter in upper left with small margin
+        float letterX = tileX + 4.0f; // 4px margin from left edge
+        float letterY = tileY + 2.0f; // 3px margin from top edge
+        renderText(letter, letterX, letterY, BLACK_COLOR, font);
+    } else {
+        // Fallback positioning - upper left corner
+        float letterX = tileX + 4.0f;
+        float letterY = tileY + 2.0f;
+        renderText(letter, letterX, letterY, BLACK_COLOR, font);
+    }
+
     const std::string points = std::to_string(tile->getPoints());
-    renderText(points, x + 25.0f, y + 22.0f, BLACK_COLOR, smallFont);
+    
+    int pointsW, pointsH;
+    if (smallFont && TTF_GetStringSize(smallFont, points.c_str(), 0, &pointsW, &pointsH) == 0) {
+        float pointsX = x + CELL_SIZE - pointsW - 3.0f; // 3px margin from right edge
+        float pointsY = y + CELL_SIZE - pointsH - 10.0f; // 2px margin from bottom edge
+        renderText(points, pointsX, pointsY, BLACK_COLOR, smallFont);
+    } else {
+        float pointsX = x + CELL_SIZE - 12.0f;
+        float pointsY = y + CELL_SIZE - 20.0f;
+        renderText(points, pointsX, pointsY, BLACK_COLOR, smallFont);
+    }
 }
 
+// FIXED: Improved rack rendering with better spacing
 void GameRenderer::renderPlayerRack(const Player& player, float x, float y, bool isActive) {
     const std::vector<Tile>& rack = player.getRack();
     
@@ -325,9 +740,14 @@ void GameRenderer::renderPlayerRack(const Player& player, float x, float y, bool
     };
     SDL_RenderFillRect(renderer, &clearRect);
     
-    // Render each tile in the current rack
+    // FIXED: Better spacing calculation for even distribution
+    const float totalWidth = 7.0f * TILE_SPACING; // Fixed width for 7 tiles
+    const float actualRackWidth = static_cast<float>(rack.size()) * TILE_SPACING;
+    const float centerOffset = (totalWidth - actualRackWidth) / 2.0f;
+    
+    // Render each tile in the current rack with proper spacing
     for (size_t i = 0; i < rack.size(); i++) {
-        const float tileX = x + static_cast<float>(i) * TILE_SPACING;
+        const float tileX = x + centerOffset + static_cast<float>(i) * TILE_SPACING;
         renderTile(tileX, y, &rack[i]);
     }
 }
@@ -415,9 +835,12 @@ bool GameRenderer::initializeTTF() {
 
 bool GameRenderer::loadFontsFromPaths() {
     const std::vector<std::string> fontPaths = {
-        "C:/Windows/Fonts/arial.ttf",
-        "assets/fonts/arial.ttf",
-        "arial.ttf"
+        "C:/Windows/Fonts/segoeui.ttf",      // Segoe UI (modern Windows font)
+        "C:/Windows/Fonts/calibri.ttf",     // Calibri (clean and readable)
+        "C:/Windows/Fonts/tahoma.ttf",      // Tahoma (fallback)
+        "C:/Windows/Fonts/arial.ttf",       // Arial (last resort)
+        "assets/fonts/segoeui.ttf",
+        "segoeui.ttf"
     };
     
     for (const auto& path : fontPaths) {
@@ -432,10 +855,11 @@ bool GameRenderer::loadFontsFromPaths() {
 }
 
 bool GameRenderer::tryLoadFont(const std::string& path) {
+    titleFont = TTF_OpenFont(path.c_str(), TITLE_FONT_SIZE);
     font = TTF_OpenFont(path.c_str(), NORMAL_FONT_SIZE);
     smallFont = TTF_OpenFont(path.c_str(), SMALL_FONT_SIZE);
     
-    if (font && smallFont) {
+    if (titleFont && font && smallFont) {
         return true;
     }
     
@@ -444,6 +868,7 @@ bool GameRenderer::tryLoadFont(const std::string& path) {
 }
 
 void GameRenderer::cleanupFailedFontLoad() {
+    if (titleFont) { TTF_CloseFont(titleFont); titleFont = nullptr; }
     if (font) { TTF_CloseFont(font); font = nullptr; }
     if (smallFont) { TTF_CloseFont(smallFont); smallFont = nullptr; }
 }
@@ -452,28 +877,60 @@ void GameRenderer::cleanupFailedFontLoad() {
 std::pair<std::string, SDL_Color> GameRenderer::getSpecialSquareTextInfo(SpecialSquare special) const {
     switch (special) {
         case SpecialSquare::DOUBLE_LETTER: return {"2L", BLACK_COLOR};
-        case SpecialSquare::TRIPLE_LETTER: return {"3L", WHITE_COLOR};
+        case SpecialSquare::TRIPLE_LETTER: return {"3L", BLACK_COLOR};
         case SpecialSquare::DOUBLE_WORD: return {"2W", BLACK_COLOR};
-        case SpecialSquare::TRIPLE_WORD: return {"3W", WHITE_COLOR};
-        case SpecialSquare::CENTER: return {"*", BLACK_COLOR};
+        case SpecialSquare::TRIPLE_WORD: return {"3W", BLACK_COLOR};
+        case SpecialSquare::CENTER: return {"CT", BLACK_COLOR};
         default: return {"", BLACK_COLOR};
     }
 }
 
-// === PRIVATE HELPER METHOD FOR PLAYER SCORE ===
-void GameRenderer::renderPlayerScore(const Player& player, const SDL_FRect& scoreRect) const {
-    // Background
-    SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
-    SDL_RenderFillRect(renderer, &scoreRect);
+// === PRIVATE HELPER METHOD FOR PLAYER INFO ===
+void GameRenderer::renderPlayerInfoBox(const Player& player, const SDL_FRect& rect, bool isActive, bool isCurrentTurn) const {
+    // Background color changes based on turn
+    if (isCurrentTurn) {
+        SDL_SetRenderDrawColor(renderer, GREEN_COLOR.r, GREEN_COLOR.g, GREEN_COLOR.b, 200);
+    } else {
+        SDL_SetRenderDrawColor(renderer, 240, 240, 240, 255);
+    }
+    SDL_RenderFillRect(renderer, &rect);
     
-    // Border
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderRect(renderer, &scoreRect);
+    // Border - thicker and colored if current turn
+    if (isCurrentTurn) {
+        SDL_SetRenderDrawColor(renderer, 0, 150, 0, 255); // Dark green border
+        for (int i = 0; i < 3; i++) {
+            const SDL_FRect borderRect = {
+                rect.x - i, rect.y - i, 
+                rect.w + 2*i, rect.h + 2*i
+            };
+            SDL_RenderRect(renderer, &borderRect);
+        }
+    } else {
+        SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
+        SDL_RenderRect(renderer, &rect);
+    }
     
-    // Player info
-    renderText(player.getName(), scoreRect.x + 10.0f, scoreRect.y + 5.0f, BLACK_COLOR, font);
+    // FIXED: Better text positioning with proper padding
+    const float TEXT_PADDING = 20.0f;
+    
+    // Player name
+    renderText(player.getName(), rect.x + TEXT_PADDING, rect.y + 15.0f, BLACK_COLOR, font);
+    
+    // Current turn indicator with better spacing
+    if (isCurrentTurn) {
+        renderText(">>> YOUR TURN", rect.x + TEXT_PADDING, rect.y + 35.0f, RED_COLOR, smallFont);
+    }
+    
+    // Score with better spacing
     const std::string scoreText = "Score: " + std::to_string(player.getScore());
-    renderText(scoreText, scoreRect.x + 10.0f, scoreRect.y + 25.0f, BLACK_COLOR, smallFont);
+    renderText(scoreText, rect.x + TEXT_PADDING, rect.y + 55.0f, BLACK_COLOR, smallFont);
+    
+    // Tiles count
     const std::string tilesText = "Tiles: " + std::to_string(player.getRack().size());
-    renderText(tilesText, scoreRect.x + 10.0f, scoreRect.y + 45.0f, BLACK_COLOR, smallFont);
+    renderText(tilesText, rect.x + TEXT_PADDING, rect.y + 75.0f, BLACK_COLOR, smallFont);
+    
+    // Player type indicator
+    if (player.isAI()) {
+        renderText("(AI)", rect.x + TEXT_PADDING, rect.y + 95.0f, BLUE_COLOR, smallFont);
+    }
 }

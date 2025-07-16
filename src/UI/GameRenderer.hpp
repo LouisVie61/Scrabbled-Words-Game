@@ -30,6 +30,7 @@ private:
     SDL_Window* window;
     TTF_Font* font;
     TTF_Font* smallFont;
+    TTF_Font* titleFont;
     
     // Colors and styling constants
     static const SDL_Color BOARD_COLOR;
@@ -39,22 +40,35 @@ private:
     static const SDL_Color WHITE_COLOR;
     static const SDL_Color BLACK_COLOR;
     static const SDL_Color YELLOW_COLOR;
+    static const SDL_Color BLUE_COLOR;
+    static const SDL_Color GREEN_COLOR;
+    static const SDL_Color RED_COLOR;
     
-    // Board rendering constants
-    static const int BOARD_OFFSET_X = 50;
-    static const int BOARD_OFFSET_Y = 90;
-    static const int CELL_SIZE = 40;
+    // Updated layout constants for better positioning
+    static const int WINDOW_WIDTH = 1200;
+    static const int WINDOW_HEIGHT = 800;
+    static const int BOARD_OFFSET_X = 150;  // Better centered position
+    static const int BOARD_OFFSET_Y = 80;   // Higher up to make room for scores
+    static const int CELL_SIZE = 35;
     static const int BOARD_SIZE = 15;
 
-    // Magic numbers
-    static constexpr float TILE_SPACING = 45.0f;
-    static constexpr float RACK_PADDING = 20.0f;
-    static constexpr float SCORE_WIDTH = 180.0f;
-    static constexpr float SCORE_HEIGHT = 80.0f;
-    static constexpr float TEXT_OFFSET_X = 8.0f;
-    static constexpr float TEXT_OFFSET_Y = 12.0f;
+    // UI element positions - adjusted for new layout
+    static constexpr float PLAYER_INFO_WIDTH = 180.0f;
+    static constexpr float PLAYER_INFO_HEIGHT = 140.0f;
+    static constexpr float PLAYER_INFO_PADDING = 20.0f;
+    static constexpr float TILE_SPACING = 40.0f;
+    static constexpr float RACK_PADDING = 15.0f;
+    static constexpr float SCORE_SECTION_HEIGHT = 60.0f;
+    static constexpr float TEXT_OFFSET_X = 6.0f;
+    static constexpr float TEXT_OFFSET_Y = 10.0f;
     static constexpr float MENU_WIDTH = 600.0f;
     static constexpr float MENU_HEIGHT = 400.0f;
+    
+    // Pause button constants
+    static constexpr float PAUSE_BUTTON_SIZE = 40.0f;
+    static constexpr float PAUSE_BUTTON_MARGIN = 15.0f;
+    static constexpr float PAUSE_MENU_WIDTH = 280.0f;
+    static constexpr float PAUSE_MENU_HEIGHT = 220.0f;
 
     // === HELPER CLASSES ===
     class TextureRAII {
@@ -96,20 +110,27 @@ public:
     void renderGameState(const Game& game);
     void renderBoard(const Board& board);
     void renderPickedTiles(const Game& game); 
+    void renderSelectedTileIndicator(const Game& game);
+    void renderTilePreview(const Game& game, int mouseX, int mouseY);
     void renderPlayerRacks(const Player& player1, const Player& player2, int currentPlayer);
+    void renderPlayerInfo(const Player& player1, const Player& player2, int currentPlayer);
     void renderScores(const Player& player1, const Player& player2);
+    void renderCurrentWordScore(const Game& game);
     
     // === SCREEN RENDERING ===
     void renderMenu();
     void renderGameOver(const Player& player1, const Player& player2);
     void renderPauseScreen();
+    void renderPauseButton();
+    void renderPauseMenu();
     
     // === UTILITY ===
     void clear();
     void present();
     SDL_FRect getBoardCellRect(int row, int col) const;
     bool isPointInBoard(int x, int y, int& row, int& col) const;
-
+    bool isPointInPauseButton(int x, int y) const;
+    PauseMenuOption getPauseMenuOption(int x, int y) const;
 
 private:
     // === BOARD RENDERING HELPERS ===
@@ -138,7 +159,7 @@ private:
     bool tryLoadFont(const std::string& path);
     void cleanupFailedFontLoad();
     
-    void renderPlayerScore(const Player& player, const SDL_FRect& scoreRect) const;
+    void renderPlayerInfoBox(const Player& player, const SDL_FRect& rect, bool isActive, bool isCurrentTurn) const;
 
     // === UTILITY HELPERS ===
     std::pair<std::string, SDL_Color> getSpecialSquareTextInfo(SpecialSquare special) const;
