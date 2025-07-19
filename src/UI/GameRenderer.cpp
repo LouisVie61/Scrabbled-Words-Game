@@ -25,8 +25,8 @@ const SDL_Color GameRenderer::SPECIAL_SQUARE_COLORS[] = {
 
 // Define font sizes
 static const int TITLE_FONT_SIZE = 24;
-static const int NORMAL_FONT_SIZE = 18;  // Increased for better readability
-static const int SMALL_FONT_SIZE = 14;   // Increased for better readability
+static const int NORMAL_FONT_SIZE = 18;
+static const int SMALL_FONT_SIZE = 14;
 
 // === CONSTRUCTOR & DESTRUCTOR ===
 GameRenderer::GameRenderer(SDL_Renderer* renderer, SDL_Window* window) 
@@ -487,40 +487,162 @@ PauseMenuOption GameRenderer::getPauseMenuOption(int x, int y) const {
 }
 
 void GameRenderer::renderGameOver(const Player& player1, const Player& player2) {
-    // Semi-transparent overlay
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 150);
     const SDL_FRect overlay = {0.0f, 0.0f, static_cast<float>(WINDOW_WIDTH), static_cast<float>(WINDOW_HEIGHT)};
     SDL_RenderFillRect(renderer, &overlay);
-    
-    // Game over box
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-    const SDL_FRect gameOverRect = {250.0f, 200.0f, 500.0f, 300.0f};
-    SDL_RenderFillRect(renderer, &gameOverRect);
-    
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-    SDL_RenderRect(renderer, &gameOverRect);
-    
-    // Content
-    renderText("GAME OVER", 420.0f, 230.0f, BLACK_COLOR, font);
-    
-    std::string winnerText;
-    if (player1.getScore() > player2.getScore()) {
-        winnerText = player1.getName() + " WINS!";
-    } else if (player2.getScore() > player1.getScore()) {
-        winnerText = player2.getName() + " WINS!";
-    } else {
-        winnerText = "IT'S A TIE!";
+    static Uint64 startTime = 0;
+    if (startTime == 0) {
+        startTime = SDL_GetTicks();
     }
-    renderText(winnerText, 380.0f, 280.0f, BLACK_COLOR, font);
+    Uint64 currentTime = SDL_GetTicks();
+    float elapsedTime = (currentTime - startTime) / 1000.0f;
     
-    // Final scores
-    renderText("Final Scores:", 360.0f, 320.0f, BLACK_COLOR, smallFont);
-    const std::string score1 = player1.getName() + ": " + std::to_string(player1.getScore());
-    const std::string score2 = player2.getName() + ": " + std::to_string(player2.getScore());
-    renderText(score1, 300.0f, 350.0f, BLACK_COLOR, smallFont);
-    renderText(score2, 300.0f, 370.0f, BLACK_COLOR, smallFont);
+    const float TITLE_ANIMATION_DURATION = 2.0f;
+    const float SCOREBOARD_DELAY = 1.5f;
+    const float centerX = WINDOW_WIDTH / 2.0f;
     
-    renderText("Press ESC to exit", 380.0f, 420.0f, BLACK_COLOR, smallFont);
+    if (elapsedTime < TITLE_ANIMATION_DURATION) {
+        float animProgress = elapsedTime / TITLE_ANIMATION_DURATION;
+        float bounceHeight = 50.0f * (1.0f - animProgress) * sin(animProgress * 10.0f);
+        float sizeMultiplier = 2.0f - (1.0f * animProgress);
+        float startY = WINDOW_HEIGHT / 2.0f - 50.0f;
+        float endY = 80.0f;
+        float currentY = startY + (endY - startY) * animProgress + bounceHeight;
+        
+        int baseTextW = 200, baseTextH = 30;
+        if (titleFont && TTF_GetStringSize(titleFont, "GAME OVER", 0, &baseTextW, &baseTextH) != 0) {
+            baseTextW = 200;
+            baseTextH = 30;
+        }
+        
+        float scaledW = baseTextW * sizeMultiplier;
+        float scaledH = baseTextH * sizeMultiplier;
+        const float centeredX = centerX - (scaledW / 2.0f);
+
+        SDL_Color shadowColor = {80, 80, 80, static_cast<Uint8>(255 * (1.0f - animProgress * 0.3f))};
+        SDL_Color mainColor = {RED_COLOR.r, RED_COLOR.g, RED_COLOR.b, static_cast<Uint8>(255 * (1.0f - animProgress * 0.2f))};
+
+        float biggerSizeMultiplier = sizeMultiplier * 2.0f;
+        int layerCount = static_cast<int>(biggerSizeMultiplier * 1.5f);
+
+        for (int i = 0; i < layerCount; i++) {
+            renderText("GAME OVER", centeredX + 3 + i, currentY + 3 + i, shadowColor, titleFont);
+        }
+        for (int i = 0; i < layerCount; i++) {
+            renderText("GAME OVER", centeredX + i, currentY + i, mainColor, titleFont);
+        }
+    } else {
+        int textW = 200, textH = 30;
+        if (titleFont && TTF_GetStringSize(titleFont, "GAME OVER", 0, &textW, &textH) != 0) {
+            textW = 200;
+            textH = 30;
+        }
+            
+            const float finalX = centerX - (textW / 2.0f);
+            const float finalY = 80.0f;
+            renderText("GAME OVER", finalX + 3, finalY + 3, {80, 80, 80, 255}, titleFont);
+            renderText("GAME OVER", finalX, finalY, RED_COLOR, titleFont);
+    }
+    
+    if (elapsedTime > SCOREBOARD_DELAY) {
+        float scoreboardProgress = (elapsedTime - SCOREBOARD_DELAY) / 1.0f;
+        if (scoreboardProgress > 1.0f) scoreboardProgress = 1.0f;
+        
+        const float boxWidth = 500.0f;
+        const float boxHeight = 350.0f;
+        const float finalBoxX = centerX - (boxWidth / 2.0f);
+        const float finalBoxY = 180.0f;
+        float startBoxY = WINDOW_HEIGHT;
+        float currentBoxY = startBoxY + (finalBoxY - startBoxY) * scoreboardProgress;
+        const SDL_FRect resultBox = {finalBoxX, currentBoxY, boxWidth, boxHeight};
+        if (currentBoxY < WINDOW_HEIGHT) {
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, static_cast<Uint8>(120 * scoreboardProgress));
+            for (int i = 8; i >= 0; i--) {
+                const SDL_FRect shadowLayer = {
+                    finalBoxX + i, currentBoxY + i, 
+                    boxWidth + (8 - i), boxHeight + (8 - i)
+                };
+                SDL_SetRenderDrawColor(renderer, 0, 0, 0, static_cast<Uint8>(15 * scoreboardProgress));
+                SDL_RenderFillRect(renderer, &shadowLayer);
+            }
+            SDL_SetRenderDrawColor(renderer, WHITE_COLOR.r, WHITE_COLOR.g, WHITE_COLOR.b, static_cast<Uint8>(240 * scoreboardProgress));
+            SDL_RenderFillRect(renderer, &resultBox);
+            const float cornerRadius = 10.0f;
+            SDL_SetRenderDrawColor(renderer, WHITE_COLOR.r, WHITE_COLOR.g, WHITE_COLOR.b, static_cast<Uint8>(240 * scoreboardProgress));
+            for (int i = 0; i < cornerRadius; i++) {
+                const SDL_FRect cornerRect = {
+                    resultBox.x - i, resultBox.y - i,
+                    cornerRadius + i, cornerRadius + i
+                };
+                SDL_RenderFillRect(renderer, &cornerRect);
+            }
+            
+            for (int i = 0; i < 4; i++) {
+                SDL_SetRenderDrawColor(renderer, 
+                    BLACK_COLOR.r, BLACK_COLOR.g, BLACK_COLOR.b, 
+                    static_cast<Uint8>((200 - i * 30) * scoreboardProgress));
+                const SDL_FRect borderRect = {
+                    resultBox.x - i, resultBox.y - i,
+                    resultBox.w + 2*i, resultBox.h + 2*i
+                };
+                SDL_RenderRect(renderer, &borderRect);
+            }
+            
+            if (scoreboardProgress > 0.8f) {
+                float contentAlpha = (scoreboardProgress - 0.8f) / 0.2f;
+                
+                // Determine winner text
+                std::string winnerText;
+                SDL_Color winnerColor = RED_COLOR;
+                
+                if (player1.getScore() > player2.getScore()) {
+                    winnerText = player1.getName() + " WINS!";
+                    winnerColor = BLUE_COLOR;
+                } else if (player2.getScore() > player1.getScore()) {
+                    winnerText = player2.getName() + " WINS!";
+                    winnerColor = BLUE_COLOR;
+                } else {
+                    winnerText = "IT'S A TIE!";
+                    winnerColor = BLUE_COLOR;
+                }
+                
+                // Center the winner text
+                int winnerW = 150, winnerH = 20;
+                if (font && TTF_GetStringSize(font, winnerText.c_str(), 0, &winnerW, &winnerH) != 0) {
+                    winnerW = 150;
+                    winnerH = 20;
+                }
+                
+                const float winnerX = resultBox.x + (resultBox.w - winnerW) / 2.0f;
+                SDL_Color fadedWinnerColor = {winnerColor.r, winnerColor.g, winnerColor.b, static_cast<Uint8>(255 * contentAlpha)};
+                renderText(winnerText, winnerX, resultBox.y + 40.0f, fadedWinnerColor, font);
+                
+                const float CONTENT_PADDING = 20.0f;
+                float currentY = resultBox.y + 100.0f;
+                
+                SDL_Color fadedBlackColor = {BLACK_COLOR.r, BLACK_COLOR.g, BLACK_COLOR.b, static_cast<Uint8>(255 * contentAlpha)};
+                SDL_Color fadedBlueColor = {BLUE_COLOR.r, BLUE_COLOR.g, BLUE_COLOR.b, static_cast<Uint8>(255 * contentAlpha)};
+                SDL_Color fadedRedColor = {RED_COLOR.r, RED_COLOR.g, RED_COLOR.b, static_cast<Uint8>(255 * contentAlpha)};
+
+                renderText("Final Scores:", resultBox.x + CONTENT_PADDING, currentY, fadedBlackColor, font);
+                currentY += 30.0f;
+                
+                const std::string score1 = player1.getName() + ": " + std::to_string(player1.getScore());
+                const std::string score2 = player2.getName() + ": " + std::to_string(player2.getScore());
+                
+                renderText(score1, resultBox.x + CONTENT_PADDING + 20.0f, currentY, fadedBlackColor, smallFont);
+                currentY += 25.0f;
+                renderText(score2, resultBox.x + CONTENT_PADDING + 20.0f, currentY, fadedBlackColor, smallFont);
+                currentY += 40.0f;
+                
+                renderText("Controls:", resultBox.x + CONTENT_PADDING, currentY, fadedBlackColor, font);
+                currentY += 30.0f;
+                renderText("[R] Play Again", resultBox.x + CONTENT_PADDING + 20.0f, currentY, fadedBlueColor, smallFont);
+                currentY += 25.0f;
+                renderText("[ESC] Exit Game", resultBox.x + CONTENT_PADDING + 20.0f, currentY, fadedRedColor, smallFont);
+            }
+        }
+    }
 }
 
 void GameRenderer::renderPauseScreen() {
@@ -910,26 +1032,20 @@ void GameRenderer::renderPlayerInfoBox(const Player& player, const SDL_FRect& re
         SDL_RenderRect(renderer, &rect);
     }
     
-    // FIXED: Better text positioning with proper padding
     const float TEXT_PADDING = 20.0f;
     
-    // Player name
     renderText(player.getName(), rect.x + TEXT_PADDING, rect.y + 15.0f, BLACK_COLOR, font);
     
-    // Current turn indicator with better spacing
     if (isCurrentTurn) {
         renderText(">>> YOUR TURN", rect.x + TEXT_PADDING, rect.y + 35.0f, RED_COLOR, smallFont);
     }
     
-    // Score with better spacing
     const std::string scoreText = "Score: " + std::to_string(player.getScore());
     renderText(scoreText, rect.x + TEXT_PADDING, rect.y + 55.0f, BLACK_COLOR, smallFont);
     
-    // Tiles count
     const std::string tilesText = "Tiles: " + std::to_string(player.getRack().size());
     renderText(tilesText, rect.x + TEXT_PADDING, rect.y + 75.0f, BLACK_COLOR, smallFont);
     
-    // Player type indicator
     if (player.isAI()) {
         renderText("(AI)", rect.x + TEXT_PADDING, rect.y + 95.0f, BLUE_COLOR, smallFont);
     }
