@@ -44,12 +44,16 @@ int main(int argc, char* argv[])
     }
     
     // Option 1: Human vs Human 
-    if (!game.setupGame(GameMode::HUMAN_VS_HUMAN, "Alice", "Bob")) {
-        std::cerr << "Failed to setup game!" << std::endl;
-        TTF_Quit();
-        SDL_Quit();
-        return 1;
-    }
+    // if (!game.setupGame(GameMode::HUMAN_VS_HUMAN, "Alice", "Bob")) {
+    //     std::cerr << "Failed to setup game!" << std::endl;
+    //     TTF_Quit();
+    //     SDL_Quit();
+    //     return 1;
+    // }
+
+    std::cout << "Game initialized successfully!" << std::endl;
+    std::cout << "Starting with menu screen..." << std::endl;
+    
     
     /* Option 2: Human vs AI (testing)
     if (!game.setupGame(GameMode::HUMAN_VS_AI, "Player", "Computer")) {
