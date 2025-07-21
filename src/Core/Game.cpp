@@ -89,10 +89,12 @@ bool Game::setupGame(GameMode mode, const std::string& player1Name,
     initializeTileBag();
     fillPlayerRacks();
     
-    currentPlayerIndex = 0;
-    gameOver = false;
-    consecutivePasses = 0;
-    consecutiveFailures = 0;
+    if (gameState == GameState::MENU) {
+        currentPlayerIndex = 0;
+        gameOver = false;
+        consecutivePasses = 0;
+        consecutiveFailures = 0;
+    }
     
     return true;
 }
@@ -233,8 +235,25 @@ bool Game::isGameRunning() const {
 
 void Game::startNewGame() {
     // Reset board and game state
+    std::cout<< "Starting a new game ..." << std::endl;
+
     board.clear();
+
+    gameState = GameState::PLAYING;
+    gameOver = false;
+    consecutivePasses = 0;
+    consecutiveFailures = 0;
+    currentPlayerIndex = 0;
+    selectedTileIndex = 0;
+
+    currentWordPositions.clear();
+    currentWord.clear();
+    wordInProgress = false;
+
     setupGame(gameMode, player1.getName(), player2.getName());
+
+    std::cout << "New game started! " << player1.getName() << " goes first." << std::endl;
+    std::cout << "Board cleared, tiles redistributed!" << std::endl;
 }
 
 void Game::endGame() {
@@ -766,7 +785,27 @@ bool Game::handleMouseClick(int x, int y) {
     
     // === GAME OVER STATE HANDLING ===
     if (gameState == GameState::GAME_OVER) {
-        std::cout << "Game is over. Use ESC to exit or start new game." << std::endl;
+        std::cout << "In GAME_OVER state, checking buttons..." << std::endl;
+        
+        if (gameRenderer->isPointInPlayAgainButton(x, y)) {
+            std::cout << "PLAY AGAIN clicked!" << std::endl;
+            startNewGame();
+            return true;
+        }
+        
+        if (gameRenderer->isPointInMainMenuButton(x, y)) {
+            std::cout << "MAIN MENU clicked!" << std::endl;
+            gameState = GameState::MENU;
+            return true;
+        }
+        
+        if (gameRenderer->isPointInGameOverExitButton(x, y)) {
+            std::cout << "EXIT GAME clicked!" << std::endl;
+            isRunning = false;
+            return true;
+        }
+        
+        std::cout << "Clicked elsewhere on game over screen" << std::endl;
         return false;
     }
     

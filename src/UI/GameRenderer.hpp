@@ -136,6 +136,9 @@ public:
     bool isPointInStartButton(int x, int y) const;
     bool isPointInTutorialButton(int x, int y) const;
     bool isPointInExitButton(int x, int y) const;
+    bool isPointInPlayAgainButton(int x, int y) const;
+    bool isPointInMainMenuButton(int x, int y) const;
+    bool isPointInGameOverExitButton(int x, int y) const;
     static void toggleTutorial();
     static bool isTutorialVisible();
 
@@ -170,7 +173,12 @@ private:
     void renderFullWidthTitle(float elapsedTime, float startY, float titleHeight);
     void renderInformationBoxes(float elapsedTime, float startX, float startY, float boxWidth);
     void renderSideButtons(float elapsedTime, float startX, float startY, float buttonWidth);
-
+    void renderGameOverTitle(float elapsedTime, float startY, float titleHeight);
+    void renderGameOverContent(float elapsedTime, float startX, float startY, float boxWidth, const Player& player1, const Player& player2);
+    void renderGameOverButtons(float elapsedTime, float startX, float startY, float buttonWidth);
+    void renderPauseTitle(float elapsedTime, float startY, float titleHeight);
+    void renderPauseContent(float elapsedTime, float startX, float startY, float boxWidth);
+    void renderPauseButtons(float elapsedTime, float startX, float startY, float buttonWidth);
     // === UTILITY HELPERS ===
     std::pair<std::string, SDL_Color> getSpecialSquareTextInfo(SpecialSquare special) const;
 };

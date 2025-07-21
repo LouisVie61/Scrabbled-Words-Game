@@ -107,9 +107,7 @@ void GameRenderer::renderPickedTiles(const Game& game) {
         const Tile* tile = placement.tile;
         
         if (tile) {
-
             const SDL_FRect cellRect = getBoardCellRect(row, col);
-            
             SDL_SetRenderDrawColor(renderer, YELLOW_COLOR.r, YELLOW_COLOR.g, YELLOW_COLOR.b, YELLOW_COLOR.a);
             const SDL_FRect highlightRect = {
                 cellRect.x - 2.0f, cellRect.y - 2.0f, 
@@ -367,7 +365,6 @@ void GameRenderer::renderScores(const Player& player1, const Player& player2) {
 
 // === SCREEN RENDERING METHODS ===
 void GameRenderer::renderGameStart() {
-    // Animation timing
     static Uint64 startTime = 0;
     if (startTime == 0) {
         startTime = SDL_GetTicks();
@@ -380,27 +377,27 @@ void GameRenderer::renderGameStart() {
     SDL_SetRenderDrawColor(renderer, 30, 60, 120, 255);
     SDL_RenderClear(renderer);
     
-    // === LAYOUT CONSTANTS ===
-    const float MARGIN_FROM_TOP = 30.0f;  // 1-3cm from top (approximately)
-    const float TITLE_HEIGHT = 150.0f;    // 10-15cm height (approximately)
-    const float CONTENT_WIDTH = WINDOW_WIDTH - 100.0f;  // Leave 50px margins on each side
-    const float BOX_WIDTH = 600.0f;
-    const float BUTTON_WIDTH = 200.0f;
-    const float GAP_BETWEEN_BOX_BUTTONS = 50.0f;
+    // === CENTERED LAYOUT CONSTANTS ===
+    const float MARGIN_FROM_TOP = 30.0f;
+    const float TITLE_HEIGHT = 150.0f;
+    const float BOX_WIDTH = 500.0f;
+    const float BUTTON_WIDTH = 180.0f;
+    const float GAP_BETWEEN_BOX_BUTTONS = 40.0f;
     
-    // Calculate positions
+    // === CALCULATE TOTAL CONTENT WIDTH ===
+    const float TOTAL_CONTENT_WIDTH = BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS + BUTTON_WIDTH;
+    
+    // Calculate centered positions
+    const float centerX = WINDOW_WIDTH / 2.0f;
     const float titleY = MARGIN_FROM_TOP;
     const float contentStartY = titleY + TITLE_HEIGHT + 50.0f;
-    const float boxX = 50.0f;  // Left margin
-    const float buttonX = boxX + BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS;
     
-    // === 1. SCRABBLE GAME TITLE (Full Width) ===
+    const float contentGroupStartX = centerX - (TOTAL_CONTENT_WIDTH / 2.0f);
+    const float boxX = contentGroupStartX;
+    const float buttonX = contentGroupStartX + BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS;
+
     renderFullWidthTitle(elapsedTime, titleY, TITLE_HEIGHT);
-    
-    // === 2. INFORMATION TEXT BOXES ===
     renderInformationBoxes(elapsedTime, boxX, contentStartY, BOX_WIDTH);
-    
-    // === 3. BUTTONS ON THE RIGHT SIDE ===
     renderSideButtons(elapsedTime, buttonX, contentStartY, BUTTON_WIDTH);
 }
 
@@ -413,12 +410,10 @@ void GameRenderer::renderPauseButton() {
     const float buttonX = WINDOW_WIDTH - PAUSE_BUTTON_SIZE - PAUSE_BUTTON_MARGIN;
     const float buttonY = PAUSE_BUTTON_MARGIN;
     
-    // Enhanced button background with gradient effect
     SDL_SetRenderDrawColor(renderer, 60, 60, 60, 220);
     const SDL_FRect buttonRect = {buttonX, buttonY, PAUSE_BUTTON_SIZE, PAUSE_BUTTON_SIZE};
     SDL_RenderFillRect(renderer, &buttonRect);
     
-    // Button border - thicker and more visible
     SDL_SetRenderDrawColor(renderer, 200, 200, 200, 255);
     for (int i = 0; i < 2; i++) {
         const SDL_FRect borderRect = {
@@ -439,42 +434,41 @@ void GameRenderer::renderPauseButton() {
 }
 
 void GameRenderer::renderPauseMenu() {
+    // Animation timing - similar to other screens
+    static Uint64 startTime = 0;
+    if (startTime == 0) {
+        startTime = SDL_GetTicks();
+    }
+    
+    Uint64 currentTime = SDL_GetTicks();
+    float elapsedTime = (currentTime - startTime) / 1000.0f;
+    
+    // Dark overlay background
     SDL_SetRenderDrawColor(renderer, 0, 0, 0, 180);
     const SDL_FRect overlay = {0.0f, 0.0f, static_cast<float>(WINDOW_WIDTH), static_cast<float>(WINDOW_HEIGHT)};
     SDL_RenderFillRect(renderer, &overlay);
     
-    const float menuX = (WINDOW_WIDTH - PAUSE_MENU_WIDTH) / 2.0f;
-    const float menuY = (WINDOW_HEIGHT - PAUSE_MENU_HEIGHT) / 2.0f;
+    // === LAYOUT CONSTANTS ===
+    const float TITLE_HEIGHT = 70.0f;
+    const float BOX_WIDTH = 500.0f;
+    const float BOX_HEIGHT = 80.0f;
+    const float BUTTON_WIDTH = 180.0f;
+    const float GAP_BETWEEN_BOX_BUTTONS = 30.0f;
+    const float GAP_TITLE_TO_CONTENT = 20.0f;
+    const float GAP_CONTENT_TO_BUTTONS = 30.0f;
     
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 100);
-    const SDL_FRect shadowRect = {menuX + 5, menuY + 5, PAUSE_MENU_WIDTH, PAUSE_MENU_HEIGHT};
-    SDL_RenderFillRect(renderer, &shadowRect);
-    
-    SDL_SetRenderDrawColor(renderer, 250, 250, 250, 255);
-    const SDL_FRect menuRect = {menuX, menuY, PAUSE_MENU_WIDTH, PAUSE_MENU_HEIGHT};
-    SDL_RenderFillRect(renderer, &menuRect);
-    
-    SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
-    for (int i = 0; i < 3; i++) {
-        const SDL_FRect borderRect = {
-            menuX - i, menuY - i,
-            PAUSE_MENU_WIDTH + 2*i, PAUSE_MENU_HEIGHT + 2*i
-        };
-        SDL_RenderRect(renderer, &borderRect);
-    }
-    
-    renderText("GAME PAUSED", menuX + 80, menuY + 25, BLACK_COLOR, titleFont);
-    
-    const std::vector<std::pair<std::string, float>> options = {
-        {"Continue", menuY + 70},
-        {"Surrender", menuY + 100},
-        {"New Game", menuY + 130},
-        {"Quit", menuY + 160}
-    };
-    
-    for (const auto& [text, y] : options) {
-        renderText(text, menuX + 90, y, BLACK_COLOR, font);
-    }
+    // Calculate centered positions
+    const float centerX = WINDOW_WIDTH / 2.0f;
+    const float centerY = WINDOW_HEIGHT / 2.0f;
+    const float titleY = centerY - 200.0f;
+    const float contentStartY = titleY + TITLE_HEIGHT + GAP_TITLE_TO_CONTENT;
+    const float buttonStartY = contentStartY + BOX_HEIGHT + GAP_CONTENT_TO_BUTTONS;
+    const float boxX = centerX - BOX_WIDTH / 2.0f;
+    const float buttonX = centerX - BUTTON_WIDTH / 2.0f;
+
+    renderPauseTitle(elapsedTime, titleY, TITLE_HEIGHT);
+    renderPauseContent(elapsedTime, boxX, contentStartY, BOX_WIDTH);
+    renderPauseButtons(elapsedTime, buttonX, buttonStartY, BUTTON_WIDTH);
 }
 
 bool GameRenderer::isPointInPauseButton(int x, int y) const {
@@ -486,177 +480,76 @@ bool GameRenderer::isPointInPauseButton(int x, int y) const {
 }
 
 PauseMenuOption GameRenderer::getPauseMenuOption(int x, int y) const {
-    const float menuX = (WINDOW_WIDTH - PAUSE_MENU_WIDTH) / 2.0f;
-    const float menuY = (WINDOW_HEIGHT - PAUSE_MENU_HEIGHT) / 2.0f;
+    const float BUTTON_WIDTH = 180.0f;
+    const float buttonHeight = 55.0f;
+    const float buttonGap = 20.0f;
     
-    if (x < menuX || x > menuX + PAUSE_MENU_WIDTH || y < menuY || y > menuY + PAUSE_MENU_HEIGHT) {
-        return static_cast<PauseMenuOption>(-1); // Invalid
+    const float centerX = WINDOW_WIDTH / 2.0f;
+    const float centerY = WINDOW_HEIGHT / 2.0f;
+    const float titleY = centerY - 200.0f;
+    const float TITLE_HEIGHT = 70.0f;
+    const float BOX_HEIGHT = 80.0f;
+    const float GAP_TITLE_TO_CONTENT = 20.0f;
+    const float GAP_CONTENT_TO_BUTTONS = 30.0f;
+    
+    const float contentStartY = titleY + TITLE_HEIGHT + GAP_TITLE_TO_CONTENT;
+    const float buttonStartY = contentStartY + BOX_HEIGHT + GAP_CONTENT_TO_BUTTONS;
+    const float buttonX = centerX - BUTTON_WIDTH / 2.0f;
+    
+    // Check each button area
+    for (int i = 0; i < 4; i++) {
+        const float buttonY = buttonStartY + i * (buttonHeight + buttonGap);
+        
+        if (x >= buttonX && x <= buttonX + BUTTON_WIDTH &&
+            y >= buttonY && y <= buttonY + buttonHeight) {
+            
+            switch (i) {
+                case 0: return PauseMenuOption::CONTINUE;
+                case 1: return PauseMenuOption::SURRENDER;
+                case 2: return PauseMenuOption::NEW_GAME;
+                case 3: return PauseMenuOption::QUIT;
+            }
+        }
     }
     
-    const float relativeY = y - menuY;
-    if (relativeY >= 70 && relativeY < 100) return PauseMenuOption::CONTINUE;
-    if (relativeY >= 100 && relativeY < 130) return PauseMenuOption::SURRENDER;
-    if (relativeY >= 130 && relativeY < 160) return PauseMenuOption::NEW_GAME;
-    if (relativeY >= 160 && relativeY < 190) return PauseMenuOption::QUIT;
-    
-    return static_cast<PauseMenuOption>(-1); // Invalid
+    return static_cast<PauseMenuOption>(-1); // outside buttons
 }
 
 void GameRenderer::renderGameOver(const Player& player1, const Player& player2) {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 150);
-    const SDL_FRect overlay = {0.0f, 0.0f, static_cast<float>(WINDOW_WIDTH), static_cast<float>(WINDOW_HEIGHT)};
-    SDL_RenderFillRect(renderer, &overlay);
+    // Animation timing
     static Uint64 startTime = 0;
     if (startTime == 0) {
         startTime = SDL_GetTicks();
     }
+    
     Uint64 currentTime = SDL_GetTicks();
     float elapsedTime = (currentTime - startTime) / 1000.0f;
     
-    const float TITLE_ANIMATION_DURATION = 2.0f;
-    const float SCOREBOARD_DELAY = 1.5f;
+    // Base gradient background
+    SDL_SetRenderDrawColor(renderer, 20, 30, 60, 255);
+    SDL_RenderClear(renderer);
+    
+    // === CENTERED LAYOUT CONSTANTS ===
+    const float MARGIN_FROM_TOP = 40.0f;
+    const float TITLE_HEIGHT = 120.0f;
+    const float BOX_WIDTH = 600.0f;
+    const float BUTTON_WIDTH = 200.0f;
+    const float GAP_BETWEEN_BOX_BUTTONS = 50.0f;
+    const float TOTAL_CONTENT_WIDTH = BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS + BUTTON_WIDTH;
+    
+    // Calculate centered positions
     const float centerX = WINDOW_WIDTH / 2.0f;
+    const float titleY = MARGIN_FROM_TOP;
+    const float contentStartY = titleY + TITLE_HEIGHT + 40.0f;
     
-    if (elapsedTime < TITLE_ANIMATION_DURATION) {
-        float animProgress = elapsedTime / TITLE_ANIMATION_DURATION;
-        float bounceHeight = 50.0f * (1.0f - animProgress) * sin(animProgress * 10.0f);
-        float sizeMultiplier = 2.0f - (1.0f * animProgress);
-        float startY = WINDOW_HEIGHT / 2.0f - 50.0f;
-        float endY = 80.0f;
-        float currentY = startY + (endY - startY) * animProgress + bounceHeight;
-        
-        int baseTextW = 200, baseTextH = 30;
-        if (titleFont && TTF_GetStringSize(titleFont, "GAME OVER", 0, &baseTextW, &baseTextH) != 0) {
-            baseTextW = 200;
-            baseTextH = 30;
-        }
-        
-        float scaledW = baseTextW * sizeMultiplier;
-        float scaledH = baseTextH * sizeMultiplier;
-        const float centeredX = centerX - (scaledW / 2.0f);
-
-        SDL_Color shadowColor = {80, 80, 80, static_cast<Uint8>(255 * (1.0f - animProgress * 0.3f))};
-        SDL_Color mainColor = {RED_COLOR.r, RED_COLOR.g, RED_COLOR.b, static_cast<Uint8>(255 * (1.0f - animProgress * 0.2f))};
-
-        float biggerSizeMultiplier = sizeMultiplier * 2.0f;
-        int layerCount = static_cast<int>(biggerSizeMultiplier * 1.5f);
-
-        for (int i = 0; i < layerCount; i++) {
-            renderText("GAME OVER", centeredX + 3 + i, currentY + 3 + i, shadowColor, titleFont);
-        }
-        for (int i = 0; i < layerCount; i++) {
-            renderText("GAME OVER", centeredX + i, currentY + i, mainColor, titleFont);
-        }
-    } else {
-        int textW = 200, textH = 30;
-        if (titleFont && TTF_GetStringSize(titleFont, "GAME OVER", 0, &textW, &textH) != 0) {
-            textW = 200;
-            textH = 30;
-        }
-            
-            const float finalX = centerX - (textW / 2.0f);
-            const float finalY = 80.0f;
-            renderText("GAME OVER", finalX + 3, finalY + 3, {80, 80, 80, 255}, titleFont);
-            renderText("GAME OVER", finalX, finalY, RED_COLOR, titleFont);
-    }
+    // Center the entire content group
+    const float contentGroupStartX = centerX - (TOTAL_CONTENT_WIDTH / 2.0f);
+    const float boxX = contentGroupStartX;
+    const float buttonX = contentGroupStartX + BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS;
     
-    if (elapsedTime > SCOREBOARD_DELAY) {
-        float scoreboardProgress = (elapsedTime - SCOREBOARD_DELAY) / 1.0f;
-        if (scoreboardProgress > 1.0f) scoreboardProgress = 1.0f;
-        
-        const float boxWidth = 500.0f;
-        const float boxHeight = 350.0f;
-        const float finalBoxX = centerX - (boxWidth / 2.0f);
-        const float finalBoxY = 180.0f;
-        float startBoxY = WINDOW_HEIGHT;
-        float currentBoxY = startBoxY + (finalBoxY - startBoxY) * scoreboardProgress;
-        const SDL_FRect resultBox = {finalBoxX, currentBoxY, boxWidth, boxHeight};
-        if (currentBoxY < WINDOW_HEIGHT) {
-            SDL_SetRenderDrawColor(renderer, 0, 0, 0, static_cast<Uint8>(120 * scoreboardProgress));
-            for (int i = 8; i >= 0; i--) {
-                const SDL_FRect shadowLayer = {
-                    finalBoxX + i, currentBoxY + i, 
-                    boxWidth + (8 - i), boxHeight + (8 - i)
-                };
-                SDL_SetRenderDrawColor(renderer, 0, 0, 0, static_cast<Uint8>(15 * scoreboardProgress));
-                SDL_RenderFillRect(renderer, &shadowLayer);
-            }
-            SDL_SetRenderDrawColor(renderer, WHITE_COLOR.r, WHITE_COLOR.g, WHITE_COLOR.b, static_cast<Uint8>(240 * scoreboardProgress));
-            SDL_RenderFillRect(renderer, &resultBox);
-            const float cornerRadius = 10.0f;
-            SDL_SetRenderDrawColor(renderer, WHITE_COLOR.r, WHITE_COLOR.g, WHITE_COLOR.b, static_cast<Uint8>(240 * scoreboardProgress));
-            for (int i = 0; i < cornerRadius; i++) {
-                const SDL_FRect cornerRect = {
-                    resultBox.x - i, resultBox.y - i,
-                    cornerRadius + i, cornerRadius + i
-                };
-                SDL_RenderFillRect(renderer, &cornerRect);
-            }
-            
-            for (int i = 0; i < 4; i++) {
-                SDL_SetRenderDrawColor(renderer, 
-                    BLACK_COLOR.r, BLACK_COLOR.g, BLACK_COLOR.b, 
-                    static_cast<Uint8>((200 - i * 30) * scoreboardProgress));
-                const SDL_FRect borderRect = {
-                    resultBox.x - i, resultBox.y - i,
-                    resultBox.w + 2*i, resultBox.h + 2*i
-                };
-                SDL_RenderRect(renderer, &borderRect);
-            }
-            
-            if (scoreboardProgress > 0.8f) {
-                float contentAlpha = (scoreboardProgress - 0.8f) / 0.2f;
-                
-                std::string winnerText;
-                SDL_Color winnerColor = RED_COLOR;
-                
-                if (player1.getScore() > player2.getScore()) {
-                    winnerText = player1.getName() + " WINS!";
-                    winnerColor = BLUE_COLOR;
-                } else if (player2.getScore() > player1.getScore()) {
-                    winnerText = player2.getName() + " WINS!";
-                    winnerColor = BLUE_COLOR;
-                } else {
-                    winnerText = "IT'S A TIE!";
-                    winnerColor = BLUE_COLOR;
-                }
-                
-                int winnerW = 150, winnerH = 20;
-                if (font && TTF_GetStringSize(font, winnerText.c_str(), 0, &winnerW, &winnerH) != 0) {
-                    winnerW = 150;
-                    winnerH = 20;
-                }
-                
-                const float winnerX = resultBox.x + (resultBox.w - winnerW) / 2.0f;
-                SDL_Color fadedWinnerColor = {winnerColor.r, winnerColor.g, winnerColor.b, static_cast<Uint8>(255 * contentAlpha)};
-                renderText(winnerText, winnerX, resultBox.y + 40.0f, fadedWinnerColor, font);
-                
-                const float CONTENT_PADDING = 20.0f;
-                float currentY = resultBox.y + 100.0f;
-                
-                SDL_Color fadedBlackColor = {BLACK_COLOR.r, BLACK_COLOR.g, BLACK_COLOR.b, static_cast<Uint8>(255 * contentAlpha)};
-                SDL_Color fadedBlueColor = {BLUE_COLOR.r, BLUE_COLOR.g, BLUE_COLOR.b, static_cast<Uint8>(255 * contentAlpha)};
-                SDL_Color fadedRedColor = {RED_COLOR.r, RED_COLOR.g, RED_COLOR.b, static_cast<Uint8>(255 * contentAlpha)};
-
-                renderText("Final Scores:", resultBox.x + CONTENT_PADDING, currentY, fadedBlackColor, font);
-                currentY += 30.0f;
-                
-                const std::string score1 = player1.getName() + ": " + std::to_string(player1.getScore());
-                const std::string score2 = player2.getName() + ": " + std::to_string(player2.getScore());
-                
-                renderText(score1, resultBox.x + CONTENT_PADDING + 20.0f, currentY, fadedBlackColor, smallFont);
-                currentY += 25.0f;
-                renderText(score2, resultBox.x + CONTENT_PADDING + 20.0f, currentY, fadedBlackColor, smallFont);
-                currentY += 40.0f;
-                
-                renderText("Controls:", resultBox.x + CONTENT_PADDING, currentY, fadedBlackColor, font);
-                currentY += 30.0f;
-                renderText("[R] Play Again", resultBox.x + CONTENT_PADDING + 20.0f, currentY, fadedBlueColor, smallFont);
-                currentY += 25.0f;
-                renderText("[ESC] Exit Game", resultBox.x + CONTENT_PADDING + 20.0f, currentY, fadedRedColor, smallFont);
-            }
-        }
-    }
+    renderGameOverTitle(elapsedTime, titleY, TITLE_HEIGHT);
+    renderGameOverContent(elapsedTime, boxX, contentStartY, BOX_WIDTH, player1, player2);
+    renderGameOverButtons(elapsedTime, buttonX, contentStartY, BUTTON_WIDTH);
 }
 
 void GameRenderer::renderPauseScreen() {
@@ -1135,13 +1028,12 @@ void GameRenderer::renderInformationBoxes(float elapsedTime, float startX, float
     float contentProgress = (elapsedTime - CONTENT_DELAY) / 1.5f;
     if (contentProgress > 1.0f) contentProgress = 1.0f;
     
-    // LARGER DIMENSIONS for better readability
-    const float boxHeight1 = 280.0f;  // Increased from 200.0f
-    const float boxHeight2 = 250.0f;  // Increased from 180.0f 
-    const float gapBetweenBoxes = 30.0f;
+    const float boxHeight1 = 260.0f;
+    const float boxHeight2 = 230.0f;
+    const float gapBetweenBoxes = 25.0f;
     
     // Slide in animation
-    float slideOffset = (1.0f - contentProgress) * 100.0f;
+    float slideOffset = (1.0f - contentProgress) * 50.0f;
     float currentBoxX = startX - slideOffset;
     
     // === GAME INFORMATION BOX ===
@@ -1160,30 +1052,38 @@ void GameRenderer::renderInformationBoxes(float elapsedTime, float startX, float
     SDL_SetRenderDrawColor(renderer, 100, 149, 237, static_cast<Uint8>(200 * contentProgress));
     SDL_RenderRect(renderer, &gameInfoBox);
     
-    // LARGER CONTENT with bigger text
+    // CENTERED CONTENT with better spacing
     if (contentProgress > 0.7f) {
         float textAlpha = (contentProgress - 0.7f) / 0.3f;
         SDL_Color fadeColor = {0, 0, 0, static_cast<Uint8>(255 * textAlpha)};
         SDL_Color blueColor = {59, 130, 246, static_cast<Uint8>(255 * textAlpha)};
         
-        float contentY = gameInfoBox.y + 25.0f;
+        float contentY = gameInfoBox.y + 20.0f;
         
-        // LARGER TITLE
-        renderText("Welcome to Scrabble!", gameInfoBox.x + 25, contentY, blueColor, titleFont);
-        contentY += 45.0f;
+        // CENTERED TITLE
+        const std::string titleText = "Welcome to Scrabble!";
+        int titleW, titleH;
+        if (titleFont && TTF_GetStringSize(titleFont, titleText.c_str(), 0, &titleW, &titleH) == 0) {
+            float titleX = gameInfoBox.x + (boxWidth - titleW) / 2.0f;
+            renderText(titleText, titleX, contentY, blueColor, titleFont);
+        } else {
+            renderText(titleText, gameInfoBox.x + 20, contentY, blueColor, titleFont);
+        }
+        contentY += 40.0f; // Reduced spacing
         
         const std::vector<std::string> gameInfo = {
             "• Create words from letter tiles",
-            "• Challenge your vocabulary skills",
+            "• Challenge your vocabulary skills", 
             "• Compete against friends",
             "• Every game is unique and exciting!",
             "• Score higher by using premium squares",
-            "• Build off existing words for more points"
+            "• Build off existing words for more points",
+            "Developed by Louis Trieu. No copyright."
         };
         
         for (const auto& info : gameInfo) {
-            renderText(info, gameInfoBox.x + 30, contentY, fadeColor, font);
-            contentY += 30.0f;
+            renderText(info, gameInfoBox.x + 25, contentY, fadeColor, font);
+            contentY += 28.0f;
         }
     }
     
@@ -1198,11 +1098,9 @@ void GameRenderer::renderInformationBoxes(float elapsedTime, float startX, float
         float animProgress = std::min(1.0f, animTime / TUTORIAL_ANIMATION_DURATION);
         
         if (tutorialVisible) {
-            // Opening animation
             tutorialHeight = boxHeight2 * animProgress;
             tutorialAlpha = animProgress;
         } else {
-            // Closing animation
             tutorialHeight = boxHeight2 * (1.0f - animProgress);
             tutorialAlpha = 1.0f - animProgress;
         }
@@ -1211,12 +1109,11 @@ void GameRenderer::renderInformationBoxes(float elapsedTime, float startX, float
             tutorialAnimating = false;
         }
     } else if (tutorialVisible) {
-        // Fully open
         tutorialHeight = boxHeight2;
         tutorialAlpha = 1.0f;
     }
     
-    // Render tutorial box if it has height
+    // Render tutorial box
     if (tutorialHeight > 10.0f && contentProgress > 0.5f) {
         float tutorialY = startY + boxHeight1 + gapBetweenBoxes;
         const SDL_FRect tutorialBox = {currentBoxX, tutorialY, boxWidth, tutorialHeight};
@@ -1245,11 +1142,18 @@ void GameRenderer::renderInformationBoxes(float elapsedTime, float startX, float
             SDL_Color fadeColor = {0, 0, 0, static_cast<Uint8>(255 * textAlpha)};
             SDL_Color blueColor = {59, 130, 246, static_cast<Uint8>(255 * textAlpha)};
             
-            float tutorialContentY = tutorialBox.y + 20.0f;
+            float tutorialContentY = tutorialBox.y + 15.0f;
             
-            // LARGER TUTORIAL TITLE
-            renderText("How to Play:", tutorialBox.x + 25, tutorialContentY, blueColor, titleFont);
-            tutorialContentY += 40.0f;
+            // CENTERED TUTORIAL TITLE
+            const std::string tutorialTitle = "How to Play:";
+            int tutTitleW, tutTitleH;
+            if (titleFont && TTF_GetStringSize(titleFont, tutorialTitle.c_str(), 0, &tutTitleW, &tutTitleH) == 0) {
+                float tutTitleX = tutorialBox.x + (boxWidth - tutTitleW) / 2.0f;
+                renderText(tutorialTitle, tutTitleX, tutorialContentY, blueColor, titleFont);
+            } else {
+                renderText(tutorialTitle, tutorialBox.x + 20, tutorialContentY, blueColor, titleFont);
+            }
+            tutorialContentY += 35.0f; // Reduced spacing
             
             const std::vector<std::string> instructions = {
                 "• Click tiles to select, click board to place",
@@ -1262,28 +1166,27 @@ void GameRenderer::renderInformationBoxes(float elapsedTime, float startX, float
             };
             
             for (const auto& instruction : instructions) {
-                if (tutorialContentY + 30.0f <= tutorialBox.y + tutorialHeight - 10.0f) {
-                    renderText(instruction, tutorialBox.x + 30, tutorialContentY, fadeColor, font); // Use normal font
-                    tutorialContentY += 30.0f; // Increased spacing
+                if (tutorialContentY + 25.0f < tutorialBox.y + tutorialHeight - 10.0f) {
+                    renderText(instruction, tutorialBox.x + 25, tutorialContentY, fadeColor, font);
+                    tutorialContentY += 25.0f;
                 }
             }
         }
     }
-}
+}  
 
 void GameRenderer::renderSideButtons(float elapsedTime, float startX, float startY, float buttonWidth) {
     const float CONTENT_DELAY = 2.0f;
     
     if (elapsedTime <= CONTENT_DELAY) return;
-    
     float buttonProgress = (elapsedTime - CONTENT_DELAY) / 1.0f;
     if (buttonProgress > 1.0f) buttonProgress = 1.0f;
     
-    const float buttonHeight = 70.0f; // Increased from 60.0f
-    const float buttonGap = 25.0f;    // Increased from 20.0f
+    const float buttonHeight = 65.0f;
+    const float buttonGap = 20.0f;
     
     // Slide in from right
-    float slideOffset = (1.0f - buttonProgress) * 150.0f;
+    float slideOffset = (1.0f - buttonProgress) * 100.0f;
     float currentButtonX = startX + slideOffset;
     
     // Button definitions
@@ -1302,12 +1205,10 @@ void GameRenderer::renderSideButtons(float elapsedTime, float startX, float star
         {"EXIT GAME", "Quit Application", {239, 68, 68, 255}, {220, 38, 127, 255}, 2 * (buttonHeight + buttonGap), true}
     };
     
-    // Update tutorial button text based on visibility
     buttons[1].text = tutorialVisible ? "HIDE TUTORIAL" : "HOW TO PLAY";
     buttons[1].subtitle = tutorialVisible ? "Close Guide" : "Learn the Rules";
     
-    // Pulse effect
-    float pulseEffect = 1.0f + 0.05f * sin(elapsedTime * 3.0f);
+    float pulseEffect = 1.0f + 0.03f * sin(elapsedTime * 3.0f);
     
     for (const auto& btn : buttons) {
         if (!btn.isActive) continue;
@@ -1318,7 +1219,7 @@ void GameRenderer::renderSideButtons(float elapsedTime, float startX, float star
         };
         
         // Shadow
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, static_cast<Uint8>(50 * buttonProgress));
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, static_cast<Uint8>(40 * buttonProgress));
         const SDL_FRect shadowRect = {
             buttonRect.x + 3, buttonRect.y + 3, 
             buttonRect.w * pulseEffect, buttonRect.h * pulseEffect
@@ -1341,91 +1242,682 @@ void GameRenderer::renderSideButtons(float elapsedTime, float startX, float star
             static_cast<Uint8>(255 * buttonProgress));
         SDL_RenderRect(renderer, &pulsedRect);
         
-        // LARGER TEXT
+        // Centered button text
         SDL_Color mainTextColor = {255, 255, 255, static_cast<Uint8>(255 * buttonProgress)};
         SDL_Color subTextColor = {255, 255, 255, static_cast<Uint8>(200 * buttonProgress)};
         
-        // Use larger font for button text
-        renderText(btn.text, buttonRect.x + 20, buttonRect.y + 15, mainTextColor, titleFont);
-        renderText(btn.subtitle, buttonRect.x + 20, buttonRect.y + 45, subTextColor, font);
+        // Center main text
+        int mainTextW, mainTextH;
+        if (titleFont && TTF_GetStringSize(titleFont, btn.text.c_str(), 0, &mainTextW, &mainTextH) == 0) {
+            float mainTextX = buttonRect.x + (buttonWidth - mainTextW) / 2.0f;
+            renderText(btn.text, mainTextX, buttonRect.y + 12, mainTextColor, titleFont);
+        } else {
+            renderText(btn.text, buttonRect.x + 15, buttonRect.y + 12, mainTextColor, titleFont);
+        }
+        
+        // Center subtitle
+        int subTextW, subTextH;
+        if (font && TTF_GetStringSize(font, btn.subtitle.c_str(), 0, &subTextW, &subTextH) == 0) {
+            float subTextX = buttonRect.x + (buttonWidth - subTextW) / 2.0f;
+            renderText(btn.subtitle, subTextX, buttonRect.y + 40, subTextColor, font);
+        } else {
+            renderText(btn.subtitle, buttonRect.x + 15, buttonRect.y + 40, subTextColor, font);
+        }
+    }
+}
+
+void GameRenderer::renderGameOverTitle(float elapsedTime, float startY, float titleHeight) {
+    const float TITLE_ANIMATION_DURATION = 2.5f;
+    const float centerX = WINDOW_WIDTH / 2.0f;
+    
+    if (elapsedTime < TITLE_ANIMATION_DURATION) {
+        // Dramatic title entrance with bounce
+        float animProgress = elapsedTime / TITLE_ANIMATION_DURATION;
+        float bounceHeight = 30.0f * (1.0f - animProgress) * sin(animProgress * 8.0f);
+        float currentY = startY + (titleHeight / 4.0f) + bounceHeight;
+        
+        // Color animation - more dramatic for game over
+        float glowPulse = 1.0f + 0.5f * sin(elapsedTime * 5.0f);
+        SDL_Color mainColor = {
+            static_cast<Uint8>(std::min(255.0f, 255 * glowPulse)),
+            static_cast<Uint8>(std::min(255.0f, 50 * glowPulse)),
+            static_cast<Uint8>(std::min(255.0f, 50 * glowPulse)),
+            255
+        };
+        
+        // Calculate centered X position for "GAME OVER"
+        int titleTextWidth, titleTextHeight;
+        if (specialFont && TTF_GetStringSize(specialFont, "GAME OVER", 0, &titleTextWidth, &titleTextHeight) == 0) {
+            float centeredTitleX = centerX - (titleTextWidth / 2.0f);
+            
+            // Massive bloom glow effect
+            for (int glow = 12; glow >= 1; glow--) {
+                SDL_Color glowColor = {
+                    static_cast<Uint8>(mainColor.r / 2),
+                    static_cast<Uint8>(mainColor.g / 3),
+                    static_cast<Uint8>(mainColor.b / 3),
+                    static_cast<Uint8>(50 / glow)
+                };
+                
+                float glowOffset = glow * 4.0f * glowPulse;
+                renderText("GAME OVER", centeredTitleX + glowOffset, currentY + glowOffset, glowColor, specialFont);
+            }
+            
+            // Multiple shadow layers for depth
+            renderText("GAME OVER", centeredTitleX + 8, currentY + 8, {40, 40, 40, 255}, specialFont);
+            renderText("GAME OVER", centeredTitleX + 6, currentY + 6, {60, 60, 60, 255}, specialFont);
+            renderText("GAME OVER", centeredTitleX + 4, currentY + 4, {80, 80, 80, 255}, specialFont);
+            renderText("GAME OVER", centeredTitleX + 2, currentY + 2, {120, 120, 120, 255}, specialFont);
+            
+            // Main title text - CENTERED
+            renderText("GAME OVER", centeredTitleX, currentY, mainColor, specialFont);
+        } else {
+            float fallbackX = centerX - 120.0f;
+            
+            for (int glow = 12; glow >= 1; glow--) {
+                SDL_Color glowColor = {
+                    static_cast<Uint8>(mainColor.r / 2),
+                    static_cast<Uint8>(mainColor.g / 3),
+                    static_cast<Uint8>(mainColor.b / 3),
+                    static_cast<Uint8>(50 / glow)
+                };
+                
+                float glowOffset = glow * 4.0f * glowPulse;
+                renderText("GAME OVER", fallbackX + glowOffset, currentY + glowOffset, glowColor, specialFont);
+            }
+            
+            // Shadow layers
+            renderText("GAME OVER", fallbackX + 8, currentY + 8, {40, 40, 40, 255}, specialFont);
+            renderText("GAME OVER", fallbackX + 6, currentY + 6, {60, 60, 60, 255}, specialFont);
+            renderText("GAME OVER", fallbackX + 4, currentY + 4, {80, 80, 80, 255}, specialFont);
+            renderText("GAME OVER", fallbackX + 2, currentY + 2, {120, 120, 120, 255}, specialFont);
+            
+            // Main title text
+            renderText("GAME OVER", fallbackX, currentY, mainColor, specialFont);
+        }
+        
+    } else {
+        // Static title with dramatic pulse
+        float staticGlow = 1.0f + 0.2f * sin(elapsedTime * 2.5f);
+        float finalY = startY + (titleHeight / 4.0f);
+        
+        int titleTextWidth, titleTextHeight;
+        if (specialFont && TTF_GetStringSize(specialFont, "GAME OVER", 0, &titleTextWidth, &titleTextHeight) == 0) {
+            float centeredTitleX = centerX - (titleTextWidth / 2.0f);
+            
+            // Dramatic static glow
+            for (int glow = 8; glow >= 1; glow--) {
+                SDL_Color glowColor = {
+                    static_cast<Uint8>(RED_COLOR.r / 2),
+                    static_cast<Uint8>(RED_COLOR.g / 4),
+                    static_cast<Uint8>(RED_COLOR.b / 4),
+                    static_cast<Uint8>(30 / glow)
+                };
+                
+                float glowOffset = glow * 3.0f * staticGlow;
+                renderText("GAME OVER", centeredTitleX + glowOffset, finalY + glowOffset, glowColor, specialFont);
+            }
+            
+            // 3D depth effect
+            renderText("GAME OVER", centeredTitleX + 6, finalY + 6, {60, 60, 60, 255}, specialFont);
+            renderText("GAME OVER", centeredTitleX + 3, finalY + 3, {100, 100, 100, 255}, specialFont);
+            renderText("GAME OVER", centeredTitleX + 1, finalY + 1, {140, 140, 140, 255}, specialFont);
+            
+            SDL_Color pulsedRed = {
+                static_cast<Uint8>(RED_COLOR.r * staticGlow),
+                static_cast<Uint8>(RED_COLOR.g * staticGlow),
+                static_cast<Uint8>(RED_COLOR.b * staticGlow),
+                255
+            };
+            renderText("GAME OVER", centeredTitleX, finalY, pulsedRed, specialFont);
+        } else {
+            float fallbackX = centerX - 120.0f;
+            
+            // Static glow effects
+            for (int glow = 8; glow >= 1; glow--) {
+                SDL_Color glowColor = {
+                    static_cast<Uint8>(RED_COLOR.r / 2),
+                    static_cast<Uint8>(RED_COLOR.g / 4),
+                    static_cast<Uint8>(RED_COLOR.b / 4),
+                    static_cast<Uint8>(30 / glow)
+                };
+                
+                float glowOffset = glow * 3.0f * staticGlow;
+                renderText("GAME OVER", fallbackX + glowOffset, finalY + glowOffset, glowColor, specialFont);
+            }
+            
+            // Shadow effects
+            renderText("GAME OVER", fallbackX + 6, finalY + 6, {60, 60, 60, 255}, specialFont);
+            renderText("GAME OVER", fallbackX + 3, finalY + 3, {100, 100, 100, 255}, specialFont);
+            renderText("GAME OVER", fallbackX + 1, finalY + 1, {140, 140, 140, 255}, specialFont);
+            
+            // Main text
+            SDL_Color pulsedRed = {
+                static_cast<Uint8>(RED_COLOR.r * staticGlow),
+                static_cast<Uint8>(RED_COLOR.g * staticGlow),
+                static_cast<Uint8>(RED_COLOR.b * staticGlow),
+                255
+            };
+            renderText("GAME OVER", fallbackX, finalY, pulsedRed, specialFont);
+        }
+    }
+}
+
+void GameRenderer::renderGameOverContent(float elapsedTime, float startX, float startY, float boxWidth, const Player& player1, const Player& player2) {
+    const float CONTENT_DELAY = 1.5f;
+    
+    if (elapsedTime <= CONTENT_DELAY) return;
+    
+    float contentProgress = (elapsedTime - CONTENT_DELAY) / 1.5f;
+    if (contentProgress > 1.0f) contentProgress = 1.0f;
+    
+    const float winnerBoxHeight = 150.0f;
+    const float scoresBoxHeight = 300.0f;
+    const float gapBetweenBoxes = 30.0f;
+    
+    // Slide in animation
+    float slideOffset = (1.0f - contentProgress) * 150.0f;
+    float currentBoxX = startX - slideOffset;
+    
+    // Determine winner
+    std::string winnerText;
+    SDL_Color winnerColor;
+    bool isTie = (player1.getScore() == player2.getScore());
+    
+    if (isTie) {
+        winnerText = "IT'S A TIE!";
+        winnerColor = {255, 215, 0, 255}; // Gold
+    } else if (player1.getScore() > player2.getScore()) {
+        winnerText = player1.getName() + " WINS!";
+        winnerColor = {34, 197, 94, 255}; // Green
+    } else {
+        winnerText = player2.getName() + " WINS!";
+        winnerColor = {34, 197, 94, 255}; // Green
+    }
+    
+    // === WINNER ANNOUNCEMENT BOX ===
+    const SDL_FRect winnerBox = {currentBoxX, startY, boxWidth, winnerBoxHeight};
+    
+    // Shadow with glow
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, static_cast<Uint8>(80 * contentProgress));
+    const SDL_FRect shadowRect1 = {winnerBox.x + 6, winnerBox.y + 6, boxWidth, winnerBoxHeight};
+    SDL_RenderFillRect(renderer, &shadowRect1);
+    
+    // Main winner box with gradient effect
+    SDL_SetRenderDrawColor(renderer, 250, 250, 250, static_cast<Uint8>(245 * contentProgress));
+    SDL_RenderFillRect(renderer, &winnerBox);
+    
+    // Animated border with victory glow
+    float victoryGlow = 1.0f + 0.2f * sin(elapsedTime * 3.0f);
+    SDL_Color borderColor = {
+        static_cast<Uint8>(winnerColor.r * victoryGlow),
+        static_cast<Uint8>(winnerColor.g * victoryGlow),
+        static_cast<Uint8>(winnerColor.b * victoryGlow),
+        static_cast<Uint8>(255 * contentProgress)
+    };
+    
+    for (int i = 0; i < 3; i++) {
+        SDL_SetRenderDrawColor(renderer, borderColor.r, borderColor.g, borderColor.b, static_cast<Uint8>((255 - i * 50) * contentProgress));
+        const SDL_FRect borderRect = {
+            winnerBox.x - i, winnerBox.y - i,
+            winnerBox.w + 2*i, winnerBox.h + 2*i
+        };
+        SDL_RenderRect(renderer, &borderRect);
+    }
+    
+    // Winner content
+    if (contentProgress > 0.6f) {
+        float textAlpha = (contentProgress - 0.6f) / 0.4f;
+        SDL_Color fadedWinnerColor = {winnerColor.r, winnerColor.g, winnerColor.b, static_cast<Uint8>(255 * textAlpha)};
+        SDL_Color fadedBlackColor = {0, 0, 0, static_cast<Uint8>(255 * textAlpha)};
+        
+        float winnerContentY = winnerBox.y + 30.0f;
+        
+        // Victory message
+        renderText(winnerText, winnerBox.x + 50, winnerContentY, fadedWinnerColor, titleFont);
+        winnerContentY += 50.0f;
+        
+        // Score difference
+        int scoreDiff = abs(player1.getScore() - player2.getScore());
+        if (!isTie) {
+            std::string marginText = "Victory Margin: " + std::to_string(scoreDiff) + " points";
+            renderText(marginText, winnerBox.x + 50, winnerContentY, fadedBlackColor, font);
+        } else {
+            renderText("Perfect Match!", winnerBox.x + 50, winnerContentY, fadedBlackColor, font);
+        }
+    }
+    
+    // === DETAILED SCORES BOX ===
+    float scoresY = startY + winnerBoxHeight + gapBetweenBoxes;
+    const SDL_FRect scoresBox = {currentBoxX, scoresY, boxWidth, scoresBoxHeight};
+    
+    // Shadow
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, static_cast<Uint8>(60 * contentProgress));
+    const SDL_FRect shadowRect2 = {scoresBox.x + 5, scoresBox.y + 5, boxWidth, scoresBoxHeight};
+    SDL_RenderFillRect(renderer, &shadowRect2);
+    
+    // Main scores box
+    SDL_SetRenderDrawColor(renderer, 250, 250, 250, static_cast<Uint8>(240 * contentProgress));
+    SDL_RenderFillRect(renderer, &scoresBox);
+    
+    // Border
+    SDL_SetRenderDrawColor(renderer, 100, 149, 237, static_cast<Uint8>(200 * contentProgress));
+    SDL_RenderRect(renderer, &scoresBox);
+    
+    // Scores content
+    if (contentProgress > 0.8f) {
+        float textAlpha = (contentProgress - 0.8f) / 0.2f;
+        SDL_Color fadeColor = {0, 0, 0, static_cast<Uint8>(255 * textAlpha)};
+        SDL_Color blueColor = {59, 130, 246, static_cast<Uint8>(255 * textAlpha)};
+        SDL_Color greenColor = {34, 197, 94, static_cast<Uint8>(255 * textAlpha)};
+        
+        float scoresContentY = scoresBox.y + 25.0f;
+        
+        // Title
+        renderText("Final Scores", scoresBox.x + 25, scoresContentY, blueColor, titleFont);
+        scoresContentY += 50.0f;
+        
+        // Player 1 score
+        SDL_Color player1Color = (player1.getScore() >= player2.getScore() && !isTie) ? greenColor : fadeColor;
+        std::string score1Text = player1.getName() + ": " + std::to_string(player1.getScore()) + " points";
+        renderText(score1Text, scoresBox.x + 30, scoresContentY, player1Color, font);
+        scoresContentY += 35.0f;
+        
+        // Player 2 score  
+        SDL_Color player2Color = (player2.getScore() >= player1.getScore() && !isTie) ? greenColor : fadeColor;
+        std::string score2Text = player2.getName() + ": " + std::to_string(player2.getScore()) + " points";
+        renderText(score2Text, scoresBox.x + 30, scoresContentY, player2Color, font);
+        scoresContentY += 50.0f;
+        
+        // Game statistics
+        renderText("Game Statistics:", scoresBox.x + 25, scoresContentY, blueColor, font);
+        scoresContentY += 30.0f;
+        
+        const std::vector<std::string> stats = {
+            "• Total tiles used: " + std::to_string(14 - player1.getRackSize() - player2.getRackSize()),
+            "• " + player1.getName() + " tiles remaining: " + std::to_string(player1.getRackSize()),
+            "• " + player2.getName() + " tiles remaining: " + std::to_string(player2.getRackSize()),
+            "• Thanks for playing!"
+        };
+        
+        for (const auto& stat : stats) {
+            renderText(stat, scoresBox.x + 30, scoresContentY, fadeColor, smallFont);
+            scoresContentY += 25.0f;
+        }
+    }
+}
+
+void GameRenderer::renderGameOverButtons(float elapsedTime, float startX, float startY, float buttonWidth) {
+    const float CONTENT_DELAY = 2.0f;
+    
+    if (elapsedTime <= CONTENT_DELAY) return;
+    
+    float buttonProgress = (elapsedTime - CONTENT_DELAY) / 1.0f;
+    if (buttonProgress > 1.0f) buttonProgress = 1.0f;
+    
+    const float buttonHeight = 70.0f;
+    const float buttonGap = 25.0f;
+    
+    // Slide in from right
+    float slideOffset = (1.0f - buttonProgress) * 200.0f;
+    float currentButtonX = startX + slideOffset;
+    
+    // Button definitions - REMOVED VIEW STATS BUTTON
+    struct ButtonInfo {
+        std::string text;
+        std::string subtitle;
+        SDL_Color primaryColor;
+        SDL_Color accentColor;
+        float yOffset;
+        bool isActive;
+    };
+    
+    std::vector<ButtonInfo> buttons = {
+        {"PLAY AGAIN", "Start New Game", {34, 197, 94, 255}, {22, 163, 74, 255}, 0.0f, true},
+        {"MAIN MENU", "Return to Start", {156, 163, 175, 255}, {107, 114, 128, 255}, buttonHeight + buttonGap, true},
+        {"EXIT GAME", "Quit Application", {239, 68, 68, 255}, {220, 38, 127, 255}, 2 * (buttonHeight + buttonGap), true}
+    };
+    
+    // Victory pulse effect
+    float victoryPulse = 1.0f + 0.08f * sin(elapsedTime * 4.0f);
+    
+    for (const auto& btn : buttons) {
+        if (!btn.isActive) continue;
+        
+        const SDL_FRect buttonRect = {
+            currentButtonX, startY + btn.yOffset,
+            buttonWidth, buttonHeight
+        };
+        
+        // Shadow with depth
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, static_cast<Uint8>(60 * buttonProgress));
+        const SDL_FRect shadowRect = {
+            buttonRect.x + 4, buttonRect.y + 4, 
+            buttonRect.w * victoryPulse, buttonRect.h * victoryPulse
+        };
+        SDL_RenderFillRect(renderer, &shadowRect);
+        
+        // Main button with victory glow
+        SDL_SetRenderDrawColor(renderer, 
+            btn.primaryColor.r, btn.primaryColor.g, btn.primaryColor.b, 
+            static_cast<Uint8>(250 * buttonProgress));
+        const SDL_FRect pulsedRect = {
+            buttonRect.x, buttonRect.y,
+            buttonRect.w * victoryPulse, buttonRect.h * victoryPulse
+        };
+        SDL_RenderFillRect(renderer, &pulsedRect);
+        
+        // Animated border
+        for (int i = 0; i < 2; i++) {
+            SDL_SetRenderDrawColor(renderer, 
+                btn.accentColor.r, btn.accentColor.g, btn.accentColor.b, 
+                static_cast<Uint8>((255 - i * 80) * buttonProgress));
+            const SDL_FRect borderRect = {
+                pulsedRect.x - i, pulsedRect.y - i,
+                pulsedRect.w + 2*i, pulsedRect.h + 2*i
+            };
+            SDL_RenderRect(renderer, &borderRect);
+        }
+        
+        // Button text
+        SDL_Color mainTextColor = {255, 255, 255, static_cast<Uint8>(255 * buttonProgress)};
+        SDL_Color subTextColor = {255, 255, 255, static_cast<Uint8>(220 * buttonProgress)};
+        
+        renderText(btn.text, buttonRect.x + 15, buttonRect.y + 15, mainTextColor, font);
+        renderText(btn.subtitle, buttonRect.x + 15, buttonRect.y + 42, subTextColor, smallFont);
+    }
+}
+
+void GameRenderer::renderPauseTitle(float elapsedTime, float startY, float titleHeight) {
+    const float centerX = WINDOW_WIDTH / 2.0f;
+    const float TITLE_ANIMATION_DURATION = 1.0f;
+    
+    if (elapsedTime < TITLE_ANIMATION_DURATION) {
+        // Quick bounce entrance
+        float animProgress = elapsedTime / TITLE_ANIMATION_DURATION;
+        float bounceHeight = 15.0f * (1.0f - animProgress) * sin(animProgress * 4.0f);
+        float currentY = startY + bounceHeight;
+        
+        // Glow effect
+        float glowPulse = 1.0f + 0.2f * sin(elapsedTime * 6.0f);
+        SDL_Color titleColor = {
+            static_cast<Uint8>(std::min(255.0f, 255 * glowPulse)),
+            static_cast<Uint8>(std::min(255.0f, 200 * glowPulse)),
+            static_cast<Uint8>(std::min(255.0f, 50 * glowPulse)),
+            255
+        };
+        
+        // Shadow effect
+        renderText("GAME PAUSED", centerX - 120 + 3, currentY + 3, {80, 80, 80, 255}, specialFont);
+        renderText("GAME PAUSED", centerX - 120, currentY, titleColor, specialFont);
+    } else {
+        // Static with subtle pulse
+        float staticGlow = 1.0f + 0.1f * sin(elapsedTime * 3.0f);
+        SDL_Color titleColor = {
+            static_cast<Uint8>(255 * staticGlow),
+            static_cast<Uint8>(200 * staticGlow),
+            static_cast<Uint8>(50 * staticGlow),
+            255
+        };
+        
+        renderText("GAME PAUSED", centerX - 120 + 2, startY + 2, {100, 100, 100, 255}, specialFont);
+        renderText("GAME PAUSED", centerX - 120, startY, titleColor, specialFont);
+    }
+}
+
+void GameRenderer::renderPauseContent(float elapsedTime, float startX, float startY, float boxWidth) {
+    const float CONTENT_DELAY = 0.5f;
+    
+    if (elapsedTime <= CONTENT_DELAY) return;
+    
+    float contentProgress = (elapsedTime - CONTENT_DELAY) / 0.8f;
+    if (contentProgress > 1.0f) contentProgress = 1.0f;
+    
+    const float boxHeight = 70.0f;
+    
+    // Slide in from top
+    float slideOffset = (1.0f - contentProgress) * 40.0f;
+    float currentBoxY = startY - slideOffset;
+    
+    const SDL_FRect messageBox = {startX, currentBoxY, boxWidth, boxHeight};
+    
+    // Shadow
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, static_cast<Uint8>(100 * contentProgress));
+    const SDL_FRect shadowRect = {messageBox.x + 4, messageBox.y + 4, boxWidth, boxHeight};
+    SDL_RenderFillRect(renderer, &shadowRect);
+    
+    // Main box
+    SDL_SetRenderDrawColor(renderer, 250, 250, 250, static_cast<Uint8>(250 * contentProgress));
+    SDL_RenderFillRect(renderer, &messageBox);
+    
+    // Border with glow
+    float borderGlow = 1.0f + 0.15f * sin(elapsedTime * 2.0f);
+    SDL_SetRenderDrawColor(renderer, 
+        static_cast<Uint8>(100 * borderGlow), 
+        static_cast<Uint8>(149 * borderGlow), 
+        static_cast<Uint8>(237 * borderGlow), 
+        static_cast<Uint8>(200 * contentProgress));
+    
+    for (int i = 0; i < 2; i++) {
+        const SDL_FRect borderRect = {
+            messageBox.x - i, messageBox.y - i,
+            messageBox.w + 2*i, messageBox.h + 2*i
+        };
+        SDL_RenderRect(renderer, &borderRect);
+    }
+    
+    // Content text
+    if (contentProgress > 0.7f) {
+        float textAlpha = (contentProgress - 0.7f) / 0.3f;
+        SDL_Color textColor = {0, 0, 0, static_cast<Uint8>(255 * textAlpha)};
+        SDL_Color blueColor = {59, 130, 246, static_cast<Uint8>(255 * textAlpha)};
+        
+        float contentY = messageBox.y + 12.0f;
+        renderText("Game is temporarily paused", messageBox.x + 30, contentY, blueColor, font);
+        contentY += 25.0f;
+        renderText("Choose an option below to continue", messageBox.x + 30, contentY, textColor, smallFont);
+    }
+}
+
+void GameRenderer::renderPauseButtons(float elapsedTime, float startX, float startY, float buttonWidth) {
+    const float CONTENT_DELAY = 1.0f;
+    
+    if (elapsedTime <= CONTENT_DELAY) return;
+    
+    float buttonProgress = (elapsedTime - CONTENT_DELAY) / 0.8f;
+    if (buttonProgress > 1.0f) buttonProgress = 1.0f;
+    
+    const float buttonHeight = 55.0f;
+    const float buttonGap = 20.0f;
+    
+    // Slide in from bottom
+    float slideOffset = (1.0f - buttonProgress) * 80.0f;
+    
+    // Button definitions matching your original pause menu options
+    struct PauseButtonInfo {
+        std::string text;
+        std::string subtitle;
+        SDL_Color primaryColor;
+        SDL_Color accentColor;
+        float yOffset;
+        PauseMenuOption option;
+    };
+    
+    std::vector<PauseButtonInfo> buttons = {
+        {"CONTINUE", "Resume Game", {34, 197, 94, 255}, {22, 163, 74, 255}, 0.0f, PauseMenuOption::CONTINUE},
+        {"SURRENDER", "Give Up Turn", {239, 68, 68, 255}, {220, 38, 127, 255}, buttonHeight + buttonGap, PauseMenuOption::SURRENDER},
+        {"NEW GAME", "Start Fresh", {59, 130, 246, 255}, {37, 99, 235, 255}, 2 * (buttonHeight + buttonGap), PauseMenuOption::NEW_GAME},
+        {"QUIT", "Exit Game", {156, 163, 175, 255}, {107, 114, 128, 255}, 3 * (buttonHeight + buttonGap), PauseMenuOption::QUIT}
+    };
+    
+    float pausePulse = 1.0f + 0.03f * sin(elapsedTime * 4.0f);
+    
+    for (const auto& btn : buttons) {
+        const SDL_FRect buttonRect = {
+            startX, startY + btn.yOffset + slideOffset,
+            buttonWidth, buttonHeight
+        };
+        
+        // Shadow
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, static_cast<Uint8>(80 * buttonProgress));
+        const SDL_FRect shadowRect = {
+            buttonRect.x + 3, buttonRect.y + 3,
+            buttonRect.w * pausePulse, buttonRect.h * pausePulse
+        };
+        SDL_RenderFillRect(renderer, &shadowRect);
+        
+        // Main button
+        SDL_SetRenderDrawColor(renderer, 
+            btn.primaryColor.r, btn.primaryColor.g, btn.primaryColor.b, 
+            static_cast<Uint8>(230 * buttonProgress));
+        const SDL_FRect pulsedRect = {
+            buttonRect.x, buttonRect.y,
+            buttonRect.w * pausePulse, buttonRect.h * pausePulse
+        };
+        SDL_RenderFillRect(renderer, &pulsedRect);
+        
+        // Border
+        SDL_SetRenderDrawColor(renderer, 
+            btn.accentColor.r, btn.accentColor.g, btn.accentColor.b, 
+            static_cast<Uint8>(255 * buttonProgress));
+        SDL_RenderRect(renderer, &pulsedRect);
+        
+        // Button text
+        SDL_Color mainTextColor = {255, 255, 255, static_cast<Uint8>(255 * buttonProgress)};
+        SDL_Color subTextColor = {255, 255, 255, static_cast<Uint8>(200 * buttonProgress)};
+        
+        renderText(btn.text, buttonRect.x + 15, buttonRect.y + 8, mainTextColor, font);
+        renderText(btn.subtitle, buttonRect.x + 15, buttonRect.y + 32, subTextColor, smallFont);
     }
 }
 
 bool GameRenderer::isPointInStartButton(int x, int y) const {
-    const float BOX_WIDTH = 600.0f;
-    const float BUTTON_WIDTH = 200.0f;
-    const float GAP_BETWEEN_BOX_BUTTONS = 50.0f;
+    const float BOX_WIDTH = 500.0f;
+    const float BUTTON_WIDTH = 180.0f;
+    const float GAP_BETWEEN_BOX_BUTTONS = 40.0f;
     const float MARGIN_FROM_TOP = 30.0f;
     const float TITLE_HEIGHT = 150.0f;
     const float CONTENT_START_Y = MARGIN_FROM_TOP + TITLE_HEIGHT + 50.0f;
     
-    const float buttonX = 50.0f + BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS;
+    // Calculate the centered content group position
+    const float TOTAL_CONTENT_WIDTH = BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS + BUTTON_WIDTH;
+    const float centerX = WINDOW_WIDTH / 2.0f;
+    const float contentGroupStartX = centerX - (TOTAL_CONTENT_WIDTH / 2.0f);
+    const float buttonX = contentGroupStartX + BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS;
+    
     const float buttonY = CONTENT_START_Y;
-    const float buttonHeight = 60.0f;
+    const float buttonHeight = 65.0f;
     
-    const SDL_FRect buttonRect = {buttonX, buttonY, BUTTON_WIDTH, buttonHeight};
-    
-    bool isInside = (x >= buttonRect.x && x <= buttonRect.x + buttonRect.w &&
-                     y >= buttonRect.y && y <= buttonRect.y + buttonRect.h);
-    
-    std::cout << "START button check: (" << x << ", " << y << ") vs (" 
-              << buttonRect.x << ", " << buttonRect.y << ", " 
-              << buttonRect.w << ", " << buttonRect.h << ") = " 
-              << (isInside ? "HIT" : "MISS") << std::endl;
-    
-    return isInside;
+    return (x >= buttonX && x <= buttonX + BUTTON_WIDTH &&
+            y >= buttonY && y <= buttonY + buttonHeight);
 }
 
 bool GameRenderer::isPointInTutorialButton(int x, int y) const {
-    const float BOX_WIDTH = 600.0f;
-    const float BUTTON_WIDTH = 200.0f;
-    const float GAP_BETWEEN_BOX_BUTTONS = 50.0f;
+    const float BOX_WIDTH = 500.0f;
+    const float BUTTON_WIDTH = 180.0f;
+    const float GAP_BETWEEN_BOX_BUTTONS = 40.0f;
     const float MARGIN_FROM_TOP = 30.0f;
     const float TITLE_HEIGHT = 150.0f;
     const float CONTENT_START_Y = MARGIN_FROM_TOP + TITLE_HEIGHT + 50.0f;
-    const float buttonHeight = 70.0f;
-    const float buttonGap = 25.0f;
+    const float buttonHeight = 65.0f;
+    const float buttonGap = 20.0f;
     
-    const float buttonX = 50.0f + BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS;
+    // Calculate the centered content group position
+    const float TOTAL_CONTENT_WIDTH = BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS + BUTTON_WIDTH;
+    const float centerX = WINDOW_WIDTH / 2.0f;
+    const float contentGroupStartX = centerX - (TOTAL_CONTENT_WIDTH / 2.0f);
+    const float buttonX = contentGroupStartX + BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS;
+    
     const float buttonY = CONTENT_START_Y + buttonHeight + buttonGap;
     
-    const SDL_FRect buttonRect = {buttonX, buttonY, BUTTON_WIDTH, buttonHeight};
-    
-    bool isInside = (x >= buttonRect.x && x <= buttonRect.x + buttonRect.w &&
-                     y >= buttonRect.y && y <= buttonRect.y + buttonRect.h);
-    
-    std::cout << "TUTORIAL button check: (" << x << ", " << y << ") vs (" 
-              << buttonRect.x << ", " << buttonRect.y << ", " 
-              << buttonRect.w << ", " << buttonRect.h << ") = " 
-              << (isInside ? "HIT" : "MISS") << std::endl;
-    
-    return isInside;
+    return (x >= buttonX && x <= buttonX + BUTTON_WIDTH &&
+            y >= buttonY && y <= buttonY + buttonHeight);
 }
 
 bool GameRenderer::isPointInExitButton(int x, int y) const {
-    const float BOX_WIDTH = 600.0f;
-    const float BUTTON_WIDTH = 200.0f;
-    const float GAP_BETWEEN_BOX_BUTTONS = 50.0f;
+    const float BOX_WIDTH = 500.0f;
+    const float BUTTON_WIDTH = 180.0f;
+    const float GAP_BETWEEN_BOX_BUTTONS = 40.0f;
     const float MARGIN_FROM_TOP = 30.0f;
     const float TITLE_HEIGHT = 150.0f;
     const float CONTENT_START_Y = MARGIN_FROM_TOP + TITLE_HEIGHT + 50.0f;
+    const float buttonHeight = 65.0f;
+    const float buttonGap = 20.0f;
+    
+    // Calculate the centered content group position
+    const float TOTAL_CONTENT_WIDTH = BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS + BUTTON_WIDTH;
+    const float centerX = WINDOW_WIDTH / 2.0f;
+    const float contentGroupStartX = centerX - (TOTAL_CONTENT_WIDTH / 2.0f);
+    const float buttonX = contentGroupStartX + BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS;
+    
+    const float buttonY = CONTENT_START_Y + 2 * (buttonHeight + buttonGap);
+    
+    return (x >= buttonX && x <= buttonX + BUTTON_WIDTH &&
+            y >= buttonY && y <= buttonY + buttonHeight);
+}
+
+bool GameRenderer::isPointInPlayAgainButton(int x, int y) const {
+    // Use same calculation as renderGameOver
+    const float BOX_WIDTH = 600.0f;
+    const float BUTTON_WIDTH = 200.0f;
+    const float GAP_BETWEEN_BOX_BUTTONS = 50.0f;
+    const float MARGIN_FROM_TOP = 40.0f;
+    const float TITLE_HEIGHT = 120.0f;
+    const float CONTENT_START_Y = MARGIN_FROM_TOP + TITLE_HEIGHT + 40.0f;
+    
+    // Calculate the centered content group position
+    const float TOTAL_CONTENT_WIDTH = BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS + BUTTON_WIDTH;
+    const float centerX = WINDOW_WIDTH / 2.0f;
+    const float contentGroupStartX = centerX - (TOTAL_CONTENT_WIDTH / 2.0f);
+    const float buttonX = contentGroupStartX + BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS;
+    
+    const float buttonY = CONTENT_START_Y;
+    const float buttonHeight = 70.0f;
+    
+    return (x >= buttonX && x <= buttonX + BUTTON_WIDTH &&
+            y >= buttonY && y <= buttonY + buttonHeight);
+}
+
+bool GameRenderer::isPointInMainMenuButton(int x, int y) const {
+    const float BOX_WIDTH = 600.0f;
+    const float BUTTON_WIDTH = 200.0f;
+    const float GAP_BETWEEN_BOX_BUTTONS = 50.0f;
+    const float MARGIN_FROM_TOP = 40.0f;
+    const float TITLE_HEIGHT = 120.0f;
+    const float CONTENT_START_Y = MARGIN_FROM_TOP + TITLE_HEIGHT + 40.0f;
     const float buttonHeight = 70.0f;
     const float buttonGap = 25.0f;
     
-    const float buttonX = 50.0f + BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS;
+    const float TOTAL_CONTENT_WIDTH = BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS + BUTTON_WIDTH;
+    const float centerX = WINDOW_WIDTH / 2.0f;
+    const float contentGroupStartX = centerX - (TOTAL_CONTENT_WIDTH / 2.0f);
+    const float buttonX = contentGroupStartX + BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS;
+    
+    const float buttonY = CONTENT_START_Y + 1 * (buttonHeight + buttonGap);
+    
+    return (x >= buttonX && x <= buttonX + BUTTON_WIDTH &&
+            y >= buttonY && y <= buttonY + buttonHeight);
+}
+
+bool GameRenderer::isPointInGameOverExitButton(int x, int y) const {
+    const float BOX_WIDTH = 600.0f;
+    const float BUTTON_WIDTH = 200.0f;
+    const float GAP_BETWEEN_BOX_BUTTONS = 50.0f;
+    const float MARGIN_FROM_TOP = 40.0f;
+    const float TITLE_HEIGHT = 120.0f;
+    const float CONTENT_START_Y = MARGIN_FROM_TOP + TITLE_HEIGHT + 40.0f;
+    const float buttonHeight = 70.0f;
+    const float buttonGap = 25.0f;
+    
+    const float TOTAL_CONTENT_WIDTH = BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS + BUTTON_WIDTH;
+    const float centerX = WINDOW_WIDTH / 2.0f;
+    const float contentGroupStartX = centerX - (TOTAL_CONTENT_WIDTH / 2.0f);
+    const float buttonX = contentGroupStartX + BOX_WIDTH + GAP_BETWEEN_BOX_BUTTONS;
+    
     const float buttonY = CONTENT_START_Y + 2 * (buttonHeight + buttonGap);
     
-    const SDL_FRect buttonRect = {buttonX, buttonY, BUTTON_WIDTH, buttonHeight};
-    
-    bool isInside = (x >= buttonRect.x && x <= buttonRect.x + buttonRect.w &&
-                     y >= buttonRect.y && y <= buttonRect.y + buttonRect.h);
-    
-    std::cout << "EXIT button check: (" << x << ", " << y << ") vs (" 
-              << buttonRect.x << ", " << buttonRect.y << ", " 
-              << buttonRect.w << ", " << buttonRect.h << ") = " 
-              << (isInside ? "HIT" : "MISS") << std::endl;
-    
-    return isInside;
+    return (x >= buttonX && x <= buttonX + BUTTON_WIDTH &&
+            y >= buttonY && y <= buttonY + buttonHeight);
 }
 
 void GameRenderer::toggleTutorial() {
