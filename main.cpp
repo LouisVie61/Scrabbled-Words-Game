@@ -5,16 +5,15 @@
 #include <SDL3/SDL_init.h>
 #include <SDL3/SDL_keycode.h>
 #include <SDL3_image/SDL_image.h>
-#include <SDL3_ttf/SDL_ttf.h>  // Add TTF support
+#include <SDL3_ttf/SDL_ttf.h>
 #include <iostream>
 #include "src/Core/Game.hpp"
 
-// Link SDL3 libraries on Windows
 #ifdef _WIN32
     #pragma comment(lib, "SDL3.lib")
     #pragma comment(lib, "SDL3main.lib")
-    #pragma comment(lib, "SDL3_image.lib")  // Add image lib
-    #pragma comment(lib, "SDL3_ttf.lib")    // Add TTF lib
+    #pragma comment(lib, "SDL3_image.lib")
+    #pragma comment(lib, "SDL3_ttf.lib")
     #undef main
 #endif
 
@@ -44,12 +43,16 @@ int main(int argc, char* argv[])
     }
     
     // Option 1: Human vs Human 
-    if (!game.setupGame(GameMode::HUMAN_VS_HUMAN, "Alice", "Bob")) {
-        std::cerr << "Failed to setup game!" << std::endl;
-        TTF_Quit();
-        SDL_Quit();
-        return 1;
-    }
+    // if (!game.setupGame(GameMode::HUMAN_VS_HUMAN, "Alice", "Bob")) {
+    //     std::cerr << "Failed to setup game!" << std::endl;
+    //     TTF_Quit();
+    //     SDL_Quit();
+    //     return 1;
+    // }
+
+    std::cout << "Game initialized successfully!" << std::endl;
+    std::cout << "Starting with menu screen..." << std::endl;
+    
     
     /* Option 2: Human vs AI (testing)
     if (!game.setupGame(GameMode::HUMAN_VS_AI, "Player", "Computer")) {
@@ -84,8 +87,6 @@ int main(int argc, char* argv[])
     
     // Run the game loop
     game.run();
-    
-    // Clean up SDL subsystems
     TTF_Quit();
     SDL_Quit();
     

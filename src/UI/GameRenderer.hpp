@@ -31,6 +31,7 @@ private:
     TTF_Font* font;
     TTF_Font* smallFont;
     TTF_Font* titleFont;
+    TTF_Font* specialFont;
     
     // Colors and styling constants
     static const SDL_Color BOARD_COLOR;
@@ -47,8 +48,8 @@ private:
     // Updated layout constants for better positioning
     static const int WINDOW_WIDTH = 1200;
     static const int WINDOW_HEIGHT = 800;
-    static const int BOARD_OFFSET_X = 150;  // Better centered position
-    static const int BOARD_OFFSET_Y = 80;   // Higher up to make room for scores
+    static const int BOARD_OFFSET_X = 150;
+    static const int BOARD_OFFSET_Y = 80;
     static const int CELL_SIZE = 35;
     static const int BOARD_SIZE = 15;
 
@@ -118,6 +119,7 @@ public:
     void renderCurrentWordScore(const Game& game);
     
     // === SCREEN RENDERING ===
+    void renderGameStart();
     void renderMenu();
     void renderGameOver(const Player& player1, const Player& player2);
     void renderPauseScreen();
@@ -131,6 +133,14 @@ public:
     bool isPointInBoard(int x, int y, int& row, int& col) const;
     bool isPointInPauseButton(int x, int y) const;
     PauseMenuOption getPauseMenuOption(int x, int y) const;
+    bool isPointInStartButton(int x, int y) const;
+    bool isPointInTutorialButton(int x, int y) const;
+    bool isPointInExitButton(int x, int y) const;
+    bool isPointInPlayAgainButton(int x, int y) const;
+    bool isPointInMainMenuButton(int x, int y) const;
+    bool isPointInGameOverExitButton(int x, int y) const;
+    static void toggleTutorial();
+    static bool isTutorialVisible();
 
 private:
     // === BOARD RENDERING HELPERS ===
@@ -160,7 +170,15 @@ private:
     void cleanupFailedFontLoad();
     
     void renderPlayerInfoBox(const Player& player, const SDL_FRect& rect, bool isActive, bool isCurrentTurn) const;
-
+    void renderFullWidthTitle(float elapsedTime, float startY, float titleHeight);
+    void renderInformationBoxes(float elapsedTime, float startX, float startY, float boxWidth);
+    void renderSideButtons(float elapsedTime, float startX, float startY, float buttonWidth);
+    void renderGameOverTitle(float elapsedTime, float startY, float titleHeight);
+    void renderGameOverContent(float elapsedTime, float startX, float startY, float boxWidth, const Player& player1, const Player& player2);
+    void renderGameOverButtons(float elapsedTime, float startX, float startY, float buttonWidth);
+    void renderPauseTitle(float elapsedTime, float startY, float titleHeight);
+    void renderPauseContent(float elapsedTime, float startX, float startY, float boxWidth);
+    void renderPauseButtons(float elapsedTime, float startX, float startY, float buttonWidth);
     // === UTILITY HELPERS ===
     std::pair<std::string, SDL_Color> getSpecialSquareTextInfo(SpecialSquare special) const;
 };
