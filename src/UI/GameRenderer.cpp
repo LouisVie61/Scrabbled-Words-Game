@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include <cmath>
+#include <algorithm>
 
 // === STATIC COLOR DEFINITIONS ===
 const SDL_Color GameRenderer::BOARD_COLOR = {139, 69, 19, 255};      // Brown
@@ -328,35 +329,147 @@ void GameRenderer::renderPlayerInfo(const Player& player1, const Player& player2
 void GameRenderer::renderCurrentWordScore(const Game& game) {
     const auto& currentWord = game.getCurrentWord();
     if (currentWord.empty()) return;
+
+    std::string completeWord = "";
+    int totalScore = 0;
+    int wordMultiplier = 1;
     
-    int currentWordScore = 0;
-    std::string wordText = "";
-    
-    // Build the word string and calculate score
+    std::vector<std::pair<int, int>> positions;
     for (const auto& placement : currentWord) {
-        if (placement.tile) {
-            wordText += placement.tile->getLetter();
-            currentWordScore += placement.tile->getPoints();
+        positions.push_back({placement.row, placement.col});
+    }
+    
+    if (positions.empty()) return;
+    
+
+    std::sort(positions.begin(), positions.end(), 
+        [](const std::pair<int, int>& a, const std::pair<int, int>& b) {
+            if (a.first == b.first) return a.second < b.second;
+            return a.first < b.first;
+        });
+    
+    bool isHorizontal = (positions[0].first == positions.back().first);
+    
+    if (isHorizontal) {
+        int row = positions[0].first;
+        int startCol = positions[0].second;
+        int endCol = positions.back().second;
+        
+        const Board& board = game.getBoard();
+        while (startCol > 0 && board.getTile(row, startCol - 1) != nullptr) {
+            startCol--;
+        }
+        while (endCol < 14 && board.getTile(row, endCol + 1) != nullptr) {
+            endCol++;
+        }
+        
+        for (int col = startCol; col <= endCol; col++) {
+            const Tile* tile = board.getTile(row, col);
+            if (tile) {
+                completeWord += tile->getLetter();
+                int letterPoints = tile->getPoints();
+                
+                bool isNewlyPlaced = false;
+                for (const auto& placement : currentWord) {
+                    if (placement.row == row && placement.col == col) {
+                        isNewlyPlaced = true;
+                        break;
+                    }
+                }
+                
+                if (isNewlyPlaced) {
+                    SpecialSquare special = board.getSpecialSquare(row, col);
+                    
+                    switch (special) {
+                        case SpecialSquare::DOUBLE_LETTER:
+                            letterPoints *= 2;
+                            break;
+                        case SpecialSquare::TRIPLE_LETTER:
+                            letterPoints *= 3;
+                            break;
+                        case SpecialSquare::DOUBLE_WORD:
+                        case SpecialSquare::CENTER:
+                            wordMultiplier *= 2;
+                            break;
+                        case SpecialSquare::TRIPLE_WORD:
+                            wordMultiplier *= 3;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                
+                totalScore += letterPoints;
+            }
+        }
+    } else {
+        int col = positions[0].second;
+        int startRow = positions[0].first;
+        int endRow = positions.back().first;
+        
+        const Board& board = game.getBoard();
+        while (startRow > 0 && board.getTile(startRow - 1, col) != nullptr) {
+            startRow--;
+        }
+        while (endRow < 14 && board.getTile(endRow + 1, col) != nullptr) {
+            endRow++;
+        }
+        
+        for (int row = startRow; row <= endRow; row++) {
+            const Tile* tile = board.getTile(row, col);
+            if (tile) {
+                completeWord += tile->getLetter();
+                int letterPoints = tile->getPoints();
+                
+                bool isNewlyPlaced = false;
+                for (const auto& placement : currentWord) {
+                    if (placement.row == row && placement.col == col) {
+                        isNewlyPlaced = true;
+                        break;
+                    }
+                }
+
+                if (isNewlyPlaced) {
+                    SpecialSquare special = board.getSpecialSquare(row, col);
+                    
+                    switch (special) {
+                        case SpecialSquare::DOUBLE_LETTER:
+                            letterPoints *= 2;
+                            break;
+                        case SpecialSquare::TRIPLE_LETTER:
+                            letterPoints *= 3;
+                            break;
+                        case SpecialSquare::DOUBLE_WORD:
+                        case SpecialSquare::CENTER:
+                            wordMultiplier *= 2;
+                            break;
+                        case SpecialSquare::TRIPLE_WORD:
+                            wordMultiplier *= 3;
+                            break;
+                        default:
+                            break;
+                    }
+                }
+                
+                totalScore += letterPoints;
+            }
         }
     }
     
-    if (!wordText.empty()) {
-        // Position score display below the rack area
-        const float boardWidth = BOARD_SIZE * CELL_SIZE;
-        const float boardHeight = BOARD_SIZE * CELL_SIZE;
-        const float scoreY = BOARD_OFFSET_Y + boardHeight + RACK_PADDING + 100.0f;
-        const float scoreX = BOARD_OFFSET_X + (boardWidth / 2) - 100.0f;
+    totalScore *= wordMultiplier;
+    
+    if (!completeWord.empty()) {
+        const float infoX = 20.0f;
+        const float infoY = 20.0f;
         
-        SDL_SetRenderDrawColor(renderer, 240, 240, 240, 200);
-        const SDL_FRect scoreRect = {scoreX, scoreY, 200.0f, SCORE_SECTION_HEIGHT};
-        SDL_RenderFillRect(renderer, &scoreRect);
-        SDL_SetRenderDrawColor(renderer, 100, 100, 100, 255);
-        SDL_RenderRect(renderer, &scoreRect);
+        renderText("Building: " + completeWord, infoX, infoY, BLACK_COLOR, font);
         
-        renderText("Current Word:", scoreX + 10.0f, scoreY + 10.0f, BLACK_COLOR, smallFont);
-        renderText(wordText, scoreX + 10.0f, scoreY + 25.0f, BLUE_COLOR, font);
-        const std::string scoreText = "Points: " + std::to_string(currentWordScore);
-        renderText(scoreText, scoreX + 10.0f, scoreY + 40.0f, GREEN_COLOR, smallFont);
+        std::string scoreText = "Preview Score: " + std::to_string(totalScore);
+        if (wordMultiplier > 1) {
+            scoreText += " (x" + std::to_string(wordMultiplier) + " word bonus)";
+        }
+        
+        renderText(scoreText, infoX, infoY + 25.0f, BLUE_COLOR, smallFont);
     }
 }
 
