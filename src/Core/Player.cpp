@@ -161,9 +161,8 @@ std::vector<int> Player::findTilesForWord(const std::string& word) const {
 }
 
 bool Player::makeAIMove() {
-    // Placeholder for AI logic - implement later
     if (!isAI()) {
-        return false; // Human players don't make AI moves
+        return false;
     }
     
     // TODO: Implement AI decision making
