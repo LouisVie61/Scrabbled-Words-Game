@@ -266,6 +266,91 @@ void GameRenderer::renderPlayerInfo(const Player& player1, const Player& player2
         PLAYER_INFO_HEIGHT
     };
     renderPlayerInfoBox(player2, player2Rect, true, currentPlayer == 1);
+
+    // Render action buttons below player info boxes
+    const float buttonStartY = BOARD_OFFSET_Y + 2 * PLAYER_INFO_HEIGHT + 2 * PLAYER_INFO_PADDING + 20.0f;
+    const float buttonWidth = 55.0f;
+    const float buttonHeight = 30.0f;
+    const float buttonGap = 10.0f;
+    
+
+    // SWITCH TURN button
+    const SDL_FRect switchButton = {
+        rightSideX, 
+        buttonStartY, 
+        buttonWidth, 
+        buttonHeight
+    };
+    SDL_SetRenderDrawColor(renderer, 100, 149, 237, 255); // Blue
+    SDL_RenderFillRect(renderer, &switchButton);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderRect(renderer, &switchButton);
+    renderText("SWITCH", switchButton.x + 2, switchButton.y + 8, BLACK_COLOR, smallFont);
+    
+    // SUBMIT button
+    const SDL_FRect submitButton = {
+        rightSideX + buttonWidth + buttonGap, 
+        buttonStartY, 
+        buttonWidth, 
+        buttonHeight
+    };
+    SDL_SetRenderDrawColor(renderer, 34, 197, 94, 255); // Green
+    SDL_RenderFillRect(renderer, &submitButton);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderRect(renderer, &submitButton);
+    renderText("SUBMIT", submitButton.x + 2, submitButton.y + 8, BLACK_COLOR, smallFont);
+    
+    // CANCEL button
+    const SDL_FRect cancelButton = {
+        rightSideX + 2 * (buttonWidth + buttonGap), 
+        buttonStartY, 
+        buttonWidth, 
+        buttonHeight
+    };
+    SDL_SetRenderDrawColor(renderer, 239, 68, 68, 255); // Red
+    SDL_RenderFillRect(renderer, &cancelButton);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderRect(renderer, &cancelButton);
+    renderText("CANCEL", cancelButton.x + 2, cancelButton.y + 8, BLACK_COLOR, smallFont);
+}
+
+bool GameRenderer::isPointInSwitchTurnButton(int x, int y) const {
+    const float boardWidth = BOARD_SIZE * CELL_SIZE;
+    const float rightSideX = BOARD_OFFSET_X + boardWidth + PLAYER_INFO_PADDING;
+    const float buttonStartY = BOARD_OFFSET_Y + 2 * PLAYER_INFO_HEIGHT + 2 * PLAYER_INFO_PADDING + 20.0f;
+    const float buttonWidth = 50.0f;
+    const float buttonHeight = 30.0f;
+    
+    return (x >= rightSideX && x <= rightSideX + buttonWidth &&
+            y >= buttonStartY && y <= buttonStartY + buttonHeight);
+}
+
+bool GameRenderer::isPointInSubmitButton(int x, int y) const {
+    const float boardWidth = BOARD_SIZE * CELL_SIZE;
+    const float rightSideX = BOARD_OFFSET_X + boardWidth + PLAYER_INFO_PADDING;
+    const float buttonStartY = BOARD_OFFSET_Y + 2 * PLAYER_INFO_HEIGHT + 2 * PLAYER_INFO_PADDING + 20.0f;
+    const float buttonWidth = 50.0f;
+    const float buttonHeight = 30.0f;
+    const float buttonGap = 10.0f;
+    
+    const float submitButtonX = rightSideX + buttonWidth + buttonGap;
+    
+    return (x >= submitButtonX && x <= submitButtonX + buttonWidth &&
+            y >= buttonStartY && y <= buttonStartY + buttonHeight);
+}
+
+bool GameRenderer::isPointInCancelButton(int x, int y) const {
+    const float boardWidth = BOARD_SIZE * CELL_SIZE;
+    const float rightSideX = BOARD_OFFSET_X + boardWidth + PLAYER_INFO_PADDING;
+    const float buttonStartY = BOARD_OFFSET_Y + 2 * PLAYER_INFO_HEIGHT + 2 * PLAYER_INFO_PADDING + 20.0f;
+    const float buttonWidth = 50.0f;
+    const float buttonHeight = 30.0f;
+    const float buttonGap = 10.0f;
+    
+    const float cancelButtonX = rightSideX + 2 * (buttonWidth + buttonGap);
+    
+    return (x >= cancelButtonX && x <= cancelButtonX + buttonWidth &&
+            y >= buttonStartY && y <= buttonStartY + buttonHeight);
 }
 
 void GameRenderer::renderCurrentWordScore(const Game& game) {

@@ -755,23 +755,24 @@ bool Game::handleMouseClick(int x, int y) {
         std::cout << "In MENU state, checking buttons..." << std::endl;
         
         if (gameRenderer->isPointInStartButton(x, y)) {
-            std::cout << "START PLAYING clicked!" << std::endl;
+            std::cout << "Start button clicked!" << std::endl;
             if (!setupGame(GameMode::HUMAN_VS_HUMAN, "Player 1", "Player 2")) {
                 std::cerr << "Failed to setup game!" << std::endl;
                 return false;
             }
             gameState = GameState::PLAYING;
+            std::cout << "Game started!" << std::endl;
             return true;
         }
         
         if (gameRenderer->isPointInTutorialButton(x, y)) {
-            std::cout << "HOW TO PLAY clicked - toggling tutorial!" << std::endl;
+            std::cout << "Tutorial button clicked!" << std::endl;
             GameRenderer::toggleTutorial();
             return true;
         }
         
         if (gameRenderer->isPointInExitButton(x, y)) {
-            std::cout << "EXIT GAME clicked!" << std::endl;
+            std::cout << "Exit button clicked!" << std::endl;
             isRunning = false;
             return true;
         }
@@ -796,19 +797,19 @@ bool Game::handleMouseClick(int x, int y) {
         std::cout << "In GAME_OVER state, checking buttons..." << std::endl;
         
         if (gameRenderer->isPointInPlayAgainButton(x, y)) {
-            std::cout << "PLAY AGAIN clicked!" << std::endl;
+            std::cout << "Play Again button clicked!" << std::endl;
             startNewGame();
             return true;
         }
         
         if (gameRenderer->isPointInMainMenuButton(x, y)) {
-            std::cout << "MAIN MENU clicked!" << std::endl;
+            std::cout << "Main Menu button clicked!" << std::endl;
             gameState = GameState::MENU;
             return true;
         }
         
         if (gameRenderer->isPointInGameOverExitButton(x, y)) {
-            std::cout << "EXIT GAME clicked!" << std::endl;
+            std::cout << "Exit button clicked!" << std::endl;
             isRunning = false;
             return true;
         }
@@ -821,7 +822,41 @@ bool Game::handleMouseClick(int x, int y) {
     if (gameRenderer && gameRenderer->isPointInPauseButton(x, y)) {
         if (gameState == GameState::PLAYING || gameState == GameState::PLACING_TILES) {
             gameState = GameState::PAUSED;
-            std::cout << "Game paused via button click" << std::endl;
+            std::cout << "Game paused!" << std::endl;
+            return true;
+        }
+    }
+    
+    // === ACTION BUTTONS CHECK ===
+    if (gameState == GameState::PLAYING || gameState == GameState::PLACING_TILES) {
+        // SWITCH TURN button
+        if (gameRenderer->isPointInSwitchTurnButton(x, y)) {
+            std::cout << "Switch Turn button clicked!" << std::endl;
+            skipTurn();
+            return true;
+        }
+        
+        // SUBMIT button (only active when placing tiles)
+        if (gameRenderer->isPointInSubmitButton(x, y)) {
+            if (gameState == GameState::PLACING_TILES) {
+                std::cout << "Submit button clicked!" << std::endl;
+                validateCurrentWord();
+                return true;
+            } else {
+                std::cout << "Submit button clicked but no word in progress" << std::endl;
+            }
+            return true;
+        }
+        
+        // CANCEL button (only active when placing tiles)
+        if (gameRenderer->isPointInCancelButton(x, y)) {
+            if (gameState == GameState::PLACING_TILES) {
+                std::cout << "Cancel button clicked!" << std::endl;
+                cancelWord();
+                return true;
+            } else {
+                std::cout << "Cancel button clicked but no word in progress" << std::endl;
+            }
             return true;
         }
     }
