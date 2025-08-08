@@ -123,14 +123,32 @@ void GameRenderer::renderPickedTiles(const Game& game) {
 
 void GameRenderer::renderSelectedTileIndicator(const Game& game) {
     if (game.getGameState() != GameState::PLAYING && game.getGameState() != GameState::PLACING_TILES) {
+        std::cout << "Wrong game state, returning early" << std::endl;
         return;
     }
     
     const Player& currentPlayer = (game.getCurrentPlayerIndex() == 0) ? game.getPlayer1() : game.getPlayer2();
     const auto& rack = currentPlayer.getRack();
     int selectedIndex = game.getSelectedTileIndex();
+
     
-    if (rack.empty() || selectedIndex < 0 || selectedIndex >= static_cast<int>(rack.size())) {
+    if (!rack.empty() && selectedIndex >= 0 && selectedIndex < static_cast<int>(rack.size())) {
+        std::cout << "Selected tile letter: " << rack[selectedIndex].getLetter() << std::endl;
+    }
+    
+    // Check all the conditions
+    if (rack.empty()) {
+        std::cout << "ISSUE: Rack is empty" << std::endl;
+        return;
+    }
+    
+    if (selectedIndex < 0) {
+        std::cout << "ISSUE: Selected index is negative: " << selectedIndex << std::endl;
+        return;
+    }
+    
+    if (selectedIndex >= static_cast<int>(rack.size())) {
+        std::cout << "ISSUE: Selected index out of bounds: " << selectedIndex << " >= " << rack.size() << std::endl;
         return;
     }
     
@@ -151,7 +169,7 @@ void GameRenderer::renderSelectedTileIndicator(const Game& game) {
     const float centerOffset = (totalRackWidth - actualRackWidth) / 2.0f;
     
     const float selectedTileX = rackStartX + centerOffset + static_cast<float>(selectedIndex) * TILE_SPACING;
-    
+    // Render the gold glow
     SDL_SetRenderDrawColor(renderer, 255, 215, 0, 180); // Bright gold
     for (int i = 0; i < 3; i++) {
         const SDL_FRect glowRect = {
@@ -161,6 +179,7 @@ void GameRenderer::renderSelectedTileIndicator(const Game& game) {
         SDL_RenderRect(renderer, &glowRect);
     }
     
+    // Render the orange border
     SDL_SetRenderDrawColor(renderer, 255, 140, 0, 255); // Dark orange
     for (int i = 0; i < 2; i++) {
         const SDL_FRect innerBorder = {
@@ -169,64 +188,6 @@ void GameRenderer::renderSelectedTileIndicator(const Game& game) {
         };
         SDL_RenderRect(renderer, &innerBorder);
     }
-    
-    const float tileCenterX = selectedTileX + (CELL_SIZE / 2.0f);
-    float textX = tileCenterX - 40.0f;
-    float textY = rackY - 40.0f;
-    
-    if (textX < 10.0f) {
-        textX = 10.0f;
-    } else if (textX + 80.0f > WINDOW_WIDTH - 10.0f) {
-        textX = WINDOW_WIDTH - 90.0f;
-    }
-
-    int textW, textH;
-    if (font && TTF_GetStringSize(font, "SELECTED", 0, &textW, &textH) == 0) {
-    } else {
-        textW = 85;
-        textH = 25;
-    }
-    
-    const float bgWidth = static_cast<float>(textW) + 10.0f;  // Text width + padding
-    const float bgHeight = static_cast<float>(textH) + 6.0f;  // Text height + padding
-    
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 220); // Semi-transparent white background
-    const SDL_FRect textBgRect = {textX - 5.0f, textY - 3.0f, bgWidth, bgHeight};
-    SDL_RenderFillRect(renderer, &textBgRect);
-    
-    // Red border
-    SDL_SetRenderDrawColor(renderer, 200, 0, 0, 255);
-    SDL_RenderRect(renderer, &textBgRect);
-    
-    float centeredTextX = textBgRect.x + (bgWidth - textW) / 2.0f;
-    float centeredTextY = textBgRect.y + (bgHeight - textH) / 2.0f;
-    
-    renderText("SELECTED", centeredTextX, centeredTextY, RED_COLOR, font);
-    
-    SDL_SetRenderDrawColor(renderer, RED_COLOR.r, RED_COLOR.g, RED_COLOR.b, RED_COLOR.a);
-    const SDL_FRect underlineRect = {textX, textY + 18.0f, 80.0f, 2.0f};
-    SDL_RenderFillRect(renderer, &underlineRect);
-    
-    const float arrowY = rackY - 12.0f;
-    const float arrowLength = 8.0f;
-    const float arrowWidth = 6.0f;
-    
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Bright red
-    
-    // Draw arrow shaft (vertical line pointing down)
-    SDL_RenderLine(renderer, 
-                   tileCenterX, arrowY - arrowLength,
-                   tileCenterX, arrowY);
-    
-    // Draw left arrow head line
-    SDL_RenderLine(renderer, 
-                   tileCenterX, arrowY,
-                   tileCenterX - arrowWidth, arrowY - arrowWidth);
-    
-    // Draw right arrow head line  
-    SDL_RenderLine(renderer, 
-                   tileCenterX, arrowY,
-                   tileCenterX + arrowWidth, arrowY - arrowWidth);
 }
 
 void GameRenderer::renderTilePreview(const Game& game, int mouseX, int mouseY) {
@@ -324,6 +285,91 @@ void GameRenderer::renderPlayerInfo(const Player& player1, const Player& player2
         PLAYER_INFO_HEIGHT
     };
     renderPlayerInfoBox(player2, player2Rect, true, currentPlayer == 1);
+
+    // Render action buttons below player info boxes
+    const float buttonStartY = BOARD_OFFSET_Y + 2 * PLAYER_INFO_HEIGHT + 2 * PLAYER_INFO_PADDING + 20.0f;
+    const float buttonWidth = 55.0f;
+    const float buttonHeight = 30.0f;
+    const float buttonGap = 10.0f;
+    
+
+    // SWITCH TURN button
+    const SDL_FRect switchButton = {
+        rightSideX, 
+        buttonStartY, 
+        buttonWidth, 
+        buttonHeight
+    };
+    SDL_SetRenderDrawColor(renderer, 100, 149, 237, 255); // Blue
+    SDL_RenderFillRect(renderer, &switchButton);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderRect(renderer, &switchButton);
+    renderText("SWITCH", switchButton.x + 2, switchButton.y + 8, BLACK_COLOR, smallFont);
+    
+    // SUBMIT button
+    const SDL_FRect submitButton = {
+        rightSideX + buttonWidth + buttonGap, 
+        buttonStartY, 
+        buttonWidth, 
+        buttonHeight
+    };
+    SDL_SetRenderDrawColor(renderer, 34, 197, 94, 255); // Green
+    SDL_RenderFillRect(renderer, &submitButton);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderRect(renderer, &submitButton);
+    renderText("SUBMIT", submitButton.x + 2, submitButton.y + 8, BLACK_COLOR, smallFont);
+    
+    // CANCEL button
+    const SDL_FRect cancelButton = {
+        rightSideX + 2 * (buttonWidth + buttonGap), 
+        buttonStartY, 
+        buttonWidth, 
+        buttonHeight
+    };
+    SDL_SetRenderDrawColor(renderer, 239, 68, 68, 255); // Red
+    SDL_RenderFillRect(renderer, &cancelButton);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_RenderRect(renderer, &cancelButton);
+    renderText("CANCEL", cancelButton.x + 2, cancelButton.y + 8, BLACK_COLOR, smallFont);
+}
+
+bool GameRenderer::isPointInSwitchTurnButton(int x, int y) const {
+    const float boardWidth = BOARD_SIZE * CELL_SIZE;
+    const float rightSideX = BOARD_OFFSET_X + boardWidth + PLAYER_INFO_PADDING;
+    const float buttonStartY = BOARD_OFFSET_Y + 2 * PLAYER_INFO_HEIGHT + 2 * PLAYER_INFO_PADDING + 20.0f;
+    const float buttonWidth = 55.0f;
+    const float buttonHeight = 30.0f;
+    
+    return (x >= rightSideX && x <= rightSideX + buttonWidth &&
+            y >= buttonStartY && y <= buttonStartY + buttonHeight);
+}
+
+bool GameRenderer::isPointInSubmitButton(int x, int y) const {
+    const float boardWidth = BOARD_SIZE * CELL_SIZE;
+    const float rightSideX = BOARD_OFFSET_X + boardWidth + PLAYER_INFO_PADDING;
+    const float buttonStartY = BOARD_OFFSET_Y + 2 * PLAYER_INFO_HEIGHT + 2 * PLAYER_INFO_PADDING + 20.0f;
+    const float buttonWidth = 55.0f;
+    const float buttonHeight = 30.0f;
+    const float buttonGap = 10.0f;
+    
+    const float submitButtonX = rightSideX + buttonWidth + buttonGap;
+    
+    return (x >= submitButtonX && x <= submitButtonX + buttonWidth &&
+            y >= buttonStartY && y <= buttonStartY + buttonHeight);
+}
+
+bool GameRenderer::isPointInCancelButton(int x, int y) const {
+    const float boardWidth = BOARD_SIZE * CELL_SIZE;
+    const float rightSideX = BOARD_OFFSET_X + boardWidth + PLAYER_INFO_PADDING;
+    const float buttonStartY = BOARD_OFFSET_Y + 2 * PLAYER_INFO_HEIGHT + 2 * PLAYER_INFO_PADDING + 20.0f;
+    const float buttonWidth = 55.0f;
+    const float buttonHeight = 30.0f;
+    const float buttonGap = 10.0f;
+    
+    const float cancelButtonX = rightSideX + 2 * (buttonWidth + buttonGap);
+    
+    return (x >= cancelButtonX && x <= cancelButtonX + buttonWidth &&
+            y >= buttonStartY && y <= buttonStartY + buttonHeight);
 }
 
 void GameRenderer::renderCurrentWordScore(const Game& game) {
@@ -1190,8 +1236,7 @@ void GameRenderer::renderInformationBoxes(float elapsedTime, float startX, float
             "• Compete against friends",
             "• Every game is unique and exciting!",
             "• Score higher by using premium squares",
-            "• Build off existing words for more points",
-            "Developed by Louis Trieu. No copyright."
+            "• Build off existing words for more points"
         };
         
         for (const auto& info : gameInfo) {

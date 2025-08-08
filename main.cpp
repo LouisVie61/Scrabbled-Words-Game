@@ -74,17 +74,6 @@ int main(int argc, char* argv[])
     }
     */
     
-    std::cout << "Game initialized successfully!" << std::endl;
-    std::cout << "Controls:" << std::endl;
-    std::cout << "  1-7 keys - Select tiles from rack" << std::endl;
-    std::cout << "  LEFT/RIGHT arrows - Navigate tile selection" << std::endl;
-    std::cout << "  Mouse - Click rack tiles to select, click board to place" << std::endl;
-    std::cout << "  Enter - Submit word" << std::endl;
-    std::cout << "  Backspace - Cancel word placement" << std::endl;
-    std::cout << "  S - Shuffle rack" << std::endl;
-    std::cout << "  SPACE - Skip turn" << std::endl;
-    std::cout << "  ESC - Quit game" << std::endl;
-    
     // Run the game loop
     game.run();
     TTF_Quit();
