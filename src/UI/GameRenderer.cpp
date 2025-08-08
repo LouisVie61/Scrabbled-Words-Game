@@ -123,14 +123,32 @@ void GameRenderer::renderPickedTiles(const Game& game) {
 
 void GameRenderer::renderSelectedTileIndicator(const Game& game) {
     if (game.getGameState() != GameState::PLAYING && game.getGameState() != GameState::PLACING_TILES) {
+        std::cout << "Wrong game state, returning early" << std::endl;
         return;
     }
     
     const Player& currentPlayer = (game.getCurrentPlayerIndex() == 0) ? game.getPlayer1() : game.getPlayer2();
     const auto& rack = currentPlayer.getRack();
     int selectedIndex = game.getSelectedTileIndex();
+
     
-    if (rack.empty() || selectedIndex < 0 || selectedIndex >= static_cast<int>(rack.size())) {
+    if (!rack.empty() && selectedIndex >= 0 && selectedIndex < static_cast<int>(rack.size())) {
+        std::cout << "Selected tile letter: " << rack[selectedIndex].getLetter() << std::endl;
+    }
+    
+    // Check all the conditions
+    if (rack.empty()) {
+        std::cout << "ISSUE: Rack is empty" << std::endl;
+        return;
+    }
+    
+    if (selectedIndex < 0) {
+        std::cout << "ISSUE: Selected index is negative: " << selectedIndex << std::endl;
+        return;
+    }
+    
+    if (selectedIndex >= static_cast<int>(rack.size())) {
+        std::cout << "ISSUE: Selected index out of bounds: " << selectedIndex << " >= " << rack.size() << std::endl;
         return;
     }
     
@@ -151,7 +169,7 @@ void GameRenderer::renderSelectedTileIndicator(const Game& game) {
     const float centerOffset = (totalRackWidth - actualRackWidth) / 2.0f;
     
     const float selectedTileX = rackStartX + centerOffset + static_cast<float>(selectedIndex) * TILE_SPACING;
-    
+    // Render the gold glow
     SDL_SetRenderDrawColor(renderer, 255, 215, 0, 180); // Bright gold
     for (int i = 0; i < 3; i++) {
         const SDL_FRect glowRect = {
@@ -161,6 +179,7 @@ void GameRenderer::renderSelectedTileIndicator(const Game& game) {
         SDL_RenderRect(renderer, &glowRect);
     }
     
+    // Render the orange border
     SDL_SetRenderDrawColor(renderer, 255, 140, 0, 255); // Dark orange
     for (int i = 0; i < 2; i++) {
         const SDL_FRect innerBorder = {
@@ -318,7 +337,7 @@ bool GameRenderer::isPointInSwitchTurnButton(int x, int y) const {
     const float boardWidth = BOARD_SIZE * CELL_SIZE;
     const float rightSideX = BOARD_OFFSET_X + boardWidth + PLAYER_INFO_PADDING;
     const float buttonStartY = BOARD_OFFSET_Y + 2 * PLAYER_INFO_HEIGHT + 2 * PLAYER_INFO_PADDING + 20.0f;
-    const float buttonWidth = 50.0f;
+    const float buttonWidth = 55.0f;
     const float buttonHeight = 30.0f;
     
     return (x >= rightSideX && x <= rightSideX + buttonWidth &&
@@ -329,7 +348,7 @@ bool GameRenderer::isPointInSubmitButton(int x, int y) const {
     const float boardWidth = BOARD_SIZE * CELL_SIZE;
     const float rightSideX = BOARD_OFFSET_X + boardWidth + PLAYER_INFO_PADDING;
     const float buttonStartY = BOARD_OFFSET_Y + 2 * PLAYER_INFO_HEIGHT + 2 * PLAYER_INFO_PADDING + 20.0f;
-    const float buttonWidth = 50.0f;
+    const float buttonWidth = 55.0f;
     const float buttonHeight = 30.0f;
     const float buttonGap = 10.0f;
     
@@ -343,7 +362,7 @@ bool GameRenderer::isPointInCancelButton(int x, int y) const {
     const float boardWidth = BOARD_SIZE * CELL_SIZE;
     const float rightSideX = BOARD_OFFSET_X + boardWidth + PLAYER_INFO_PADDING;
     const float buttonStartY = BOARD_OFFSET_Y + 2 * PLAYER_INFO_HEIGHT + 2 * PLAYER_INFO_PADDING + 20.0f;
-    const float buttonWidth = 50.0f;
+    const float buttonWidth = 55.0f;
     const float buttonHeight = 30.0f;
     const float buttonGap = 10.0f;
     

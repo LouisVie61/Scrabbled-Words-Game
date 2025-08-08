@@ -106,15 +106,21 @@ bool Game::setupGame(GameMode mode, const std::string& player1Name,
 
 void Game::selectTileFromRack(int index) {
     const auto& rack = getCurrentPlayer().getRack();
+    
+    std::cout << "selectTileFromRack called with index: " << index 
+              << ", rack size: " << rack.size() << std::endl;
+    
+    if (rack.empty()) {
+        selectedTileIndex = 0;
+        std::cout << "No tiles available in rack!" << std::endl;
+        return;
+    }
+    
     if (index >= 0 && index < static_cast<int>(rack.size())) {
         selectedTileIndex = index;
-        std::cout << "Selected tile: " << rack[index].getLetter() 
-                  << " at position " << (index + 1) << "/" << rack.size() << std::endl;
-        
-        // Show rack with new selection
-        std::cout << "Rack: ";
+
         for (size_t i = 0; i < rack.size(); i++) {
-            if (i == selectedTileIndex) {
+            if (static_cast<int>(i) == selectedTileIndex) {
                 std::cout << "[>" << rack[i].getLetter() << "<] ";
             } else {
                 std::cout << "[" << rack[i].getLetter() << "] ";
@@ -122,7 +128,16 @@ void Game::selectTileFromRack(int index) {
         }
         std::cout << std::endl;
     } else {
-        std::cout << "Invalid tile selection: " << (index + 1) << std::endl;
+        if (index < 0) {
+            selectedTileIndex = 0;
+        } else if (index >= static_cast<int>(rack.size())) {
+            selectedTileIndex = rack.size() - 1;
+        }
+        
+        if (!rack.empty()) {
+            std::cout << "Selected tile: " << rack[selectedTileIndex].getLetter() 
+                      << " at position " << (selectedTileIndex + 1) << "/" << rack.size() << std::endl;
+        }
     }
 }
 
@@ -536,20 +551,20 @@ void Game::render() {
         case GameState::PLAYING:
             gameRenderer->renderBoard(board);
             gameRenderer->renderPlayerRacks(player1, player2, currentPlayerIndex);
-            gameRenderer->renderSelectedTileIndicator(*this);
             gameRenderer->renderPlayerInfo(player1, player2, currentPlayerIndex);
             gameRenderer->renderCurrentWordScore(*this);
             gameRenderer->renderPauseButton();
+            gameRenderer->renderSelectedTileIndicator(*this);
             break;
         case GameState::PLACING_TILES:
             gameRenderer->renderBoard(board);
             gameRenderer->renderPickedTiles(*this);
             gameRenderer->renderTilePreview(*this, mouseX, mouseY);
-            gameRenderer->renderSelectedTileIndicator(*this);
             gameRenderer->renderPlayerRacks(player1, player2, currentPlayerIndex);
             gameRenderer->renderPlayerInfo(player1, player2, currentPlayerIndex);
             gameRenderer->renderCurrentWordScore(*this);
             gameRenderer->renderPauseButton();
+            gameRenderer->renderSelectedTileIndicator(*this);
             break;
         case GameState::VALIDATING_WORD:
             gameRenderer->renderBoard(board);
@@ -571,8 +586,6 @@ void Game::render() {
     
     gameRenderer->present();
 }
-
-// Add these methods to Game.cpp:
 
 void Game::printHelp() const {
     std::cout << "\n========== SCRABBLE GAME CONTROLS ==========" << std::endl;
@@ -975,11 +988,6 @@ void Game::startWordPlacement() {
         currentWord.clear();
         wordInProgress = true;
         gameState = GameState::PLACING_TILES;
-        
-        std::cout << "Starting word placement..." << std::endl;
-        std::cout << "Use 1-7 keys or LEFT/RIGHT arrows to select tiles" << std::endl;
-        std::cout << "Click on board cells to place selected tile" << std::endl;
-        std::cout << "Press ENTER to confirm word, BACKSPACE to cancel" << std::endl;
         
         // Show current player's rack with selection indicator
         const auto& rack = getCurrentPlayer().getRack();
