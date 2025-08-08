@@ -169,64 +169,6 @@ void GameRenderer::renderSelectedTileIndicator(const Game& game) {
         };
         SDL_RenderRect(renderer, &innerBorder);
     }
-    
-    const float tileCenterX = selectedTileX + (CELL_SIZE / 2.0f);
-    float textX = tileCenterX - 40.0f;
-    float textY = rackY - 40.0f;
-    
-    if (textX < 10.0f) {
-        textX = 10.0f;
-    } else if (textX + 80.0f > WINDOW_WIDTH - 10.0f) {
-        textX = WINDOW_WIDTH - 90.0f;
-    }
-
-    int textW, textH;
-    if (font && TTF_GetStringSize(font, "SELECTED", 0, &textW, &textH) == 0) {
-    } else {
-        textW = 85;
-        textH = 25;
-    }
-    
-    const float bgWidth = static_cast<float>(textW) + 10.0f;  // Text width + padding
-    const float bgHeight = static_cast<float>(textH) + 6.0f;  // Text height + padding
-    
-    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 220); // Semi-transparent white background
-    const SDL_FRect textBgRect = {textX - 5.0f, textY - 3.0f, bgWidth, bgHeight};
-    SDL_RenderFillRect(renderer, &textBgRect);
-    
-    // Red border
-    SDL_SetRenderDrawColor(renderer, 200, 0, 0, 255);
-    SDL_RenderRect(renderer, &textBgRect);
-    
-    float centeredTextX = textBgRect.x + (bgWidth - textW) / 2.0f;
-    float centeredTextY = textBgRect.y + (bgHeight - textH) / 2.0f;
-    
-    renderText("SELECTED", centeredTextX, centeredTextY, RED_COLOR, font);
-    
-    SDL_SetRenderDrawColor(renderer, RED_COLOR.r, RED_COLOR.g, RED_COLOR.b, RED_COLOR.a);
-    const SDL_FRect underlineRect = {textX, textY + 18.0f, 80.0f, 2.0f};
-    SDL_RenderFillRect(renderer, &underlineRect);
-    
-    const float arrowY = rackY - 12.0f;
-    const float arrowLength = 8.0f;
-    const float arrowWidth = 6.0f;
-    
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255); // Bright red
-    
-    // Draw arrow shaft (vertical line pointing down)
-    SDL_RenderLine(renderer, 
-                   tileCenterX, arrowY - arrowLength,
-                   tileCenterX, arrowY);
-    
-    // Draw left arrow head line
-    SDL_RenderLine(renderer, 
-                   tileCenterX, arrowY,
-                   tileCenterX - arrowWidth, arrowY - arrowWidth);
-    
-    // Draw right arrow head line  
-    SDL_RenderLine(renderer, 
-                   tileCenterX, arrowY,
-                   tileCenterX + arrowWidth, arrowY - arrowWidth);
 }
 
 void GameRenderer::renderTilePreview(const Game& game, int mouseX, int mouseY) {
