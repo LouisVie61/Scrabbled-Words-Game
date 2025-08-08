@@ -1190,8 +1190,7 @@ void GameRenderer::renderInformationBoxes(float elapsedTime, float startX, float
             "• Compete against friends",
             "• Every game is unique and exciting!",
             "• Score higher by using premium squares",
-            "• Build off existing words for more points",
-            "Developed by Louis Trieu. No copyright."
+            "• Build off existing words for more points"
         };
         
         for (const auto& info : gameInfo) {

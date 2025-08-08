@@ -39,6 +39,15 @@ enum class PauseMenuOption {
     QUIT
 };
 
+// process cross word
+struct WordInfo {
+    std::string word;
+    int startRow, startCol;
+    bool isHorizontal;
+    std::vector<std::pair<int, int>> positions;
+    std::vector<std::pair<int, int>> newTilePositions;
+};
+
 class Game {
 private:
     // Core game components
@@ -170,4 +179,9 @@ public:
     void handleTurnCompletion(bool wordSuccess);
     bool checkFailureGameEnd();
     void determineWinner();
+
+    // cross word procession
+    std::vector<WordInfo> findAllWordsFormed() const;
+    WordInfo findWordAtPosition(int row, int col, bool horizontal) const;
+    int calculateWordScore(const WordInfo& wordInfo) const;
 };

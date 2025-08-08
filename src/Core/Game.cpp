@@ -3,6 +3,7 @@
 #include <iostream>
 #include <algorithm>
 #include <random>
+#include <set>
 
 Game::Game() : gameState(GameState::MENU), gameMode(GameMode::HUMAN_VS_HUMAN),
                currentPlayerIndex(0), gameOver(false), consecutivePasses(0), consecutiveFailures(0),
@@ -1029,161 +1030,201 @@ bool Game::validateCurrentWord() {
         return false;
     }
 
-    std::string word = buildWordFromPositions();
-    std::cout << "Validating word: " << word << std::endl;
-
-    if (isValidWord(word)) {
-        std::cout << "Word '" << word << "' is valid!" << std::endl;
-
-        int wordScore = 0;
-        int wordMultiplier = 1;
-        
-        auto sortedPositions = currentWordPositions;
-        std::sort(sortedPositions.begin(), sortedPositions.end(), 
-            [](const std::pair<int, int>& a, const std::pair<int, int>& b) {
-                if (a.first == b.first) return a.second < b.second;
-                return a.first < b.first;
-            });
-        
-        bool isHorizontal = (sortedPositions[0].first == sortedPositions.back().first);
-        
-        if (isHorizontal) {
-            int row = sortedPositions[0].first;
-            int startCol = sortedPositions[0].second;
-            int endCol = sortedPositions.back().second;
-            
-            while (startCol > 0 && board.getTile(row, startCol - 1) != nullptr) {
-                startCol--;
-            }
-            while (endCol < 14 && board.getTile(row, endCol + 1) != nullptr) {
-                endCol++;
-            }
-            
-            for (int col = startCol; col <= endCol; col++) {
-                const Tile* tile = board.getTile(row, col);
-                if (tile) {
-                    int letterPoints = tile->getPoints();
-                    
-                    bool isNewlyPlaced = false;
-                    for (const auto& pos : currentWordPositions) {
-                        if (pos.first == row && pos.second == col) {
-                            isNewlyPlaced = true;
-                            break;
-                        }
-                    }
-                    
-                    if (isNewlyPlaced) {
-                        SpecialSquare special = board.getSpecialSquare(row, col);
-                        
-                        switch (special) {
-                            case SpecialSquare::DOUBLE_LETTER:
-                                letterPoints *= 2;
-                                std::cout << "Double letter bonus applied to " << tile->getLetter() << std::endl;
-                                break;
-                            case SpecialSquare::TRIPLE_LETTER:
-                                letterPoints *= 3;
-                                std::cout << "Triple letter bonus applied to " << tile->getLetter() << std::endl;
-                                break;
-                            case SpecialSquare::DOUBLE_WORD:
-                            case SpecialSquare::CENTER:
-                                wordMultiplier *= 2;
-                                std::cout << "Double word bonus applied!" << std::endl;
-                                break;
-                            case SpecialSquare::TRIPLE_WORD:
-                                wordMultiplier *= 3;
-                                std::cout << "Triple word bonus applied!" << std::endl;
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                    
-                    wordScore += letterPoints;
-                }
-            }
-        } else {
-            int col = sortedPositions[0].second;
-            int startRow = sortedPositions[0].first;
-            int endRow = sortedPositions.back().first;
-            
-            while (startRow > 0 && board.getTile(startRow - 1, col) != nullptr) {
-                startRow--;
-            }
-            while (endRow < 14 && board.getTile(endRow + 1, col) != nullptr) {
-                endRow++;
-            }
-            
-            for (int row = startRow; row <= endRow; row++) {
-                const Tile* tile = board.getTile(row, col);
-                if (tile) {
-                    int letterPoints = tile->getPoints();
-                    bool isNewlyPlaced = false;
-                    for (const auto& pos : currentWordPositions) {
-                        if (pos.first == row && pos.second == col) {
-                            isNewlyPlaced = true;
-                            break;
-                        }
-                    }
-                    
-                    if (isNewlyPlaced) {
-                        SpecialSquare special = board.getSpecialSquare(row, col);
-                        switch (special) {
-                            case SpecialSquare::DOUBLE_LETTER:
-                                letterPoints *= 2;
-                                std::cout << "Double letter bonus applied to " << tile->getLetter() << std::endl;
-                                break;
-                            case SpecialSquare::TRIPLE_LETTER:
-                                letterPoints *= 3;
-                                std::cout << "Triple letter bonus applied to " << tile->getLetter() << std::endl;
-                                break;
-                            case SpecialSquare::DOUBLE_WORD:
-                            case SpecialSquare::CENTER:
-                                wordMultiplier *= 2;
-                                std::cout << "Double word bonus applied!" << std::endl;
-                                break;
-                            case SpecialSquare::TRIPLE_WORD:
-                                wordMultiplier *= 3;
-                                std::cout << "Triple word bonus applied!" << std::endl;
-                                break;
-                            default:
-                                break;
-                        }
-                    }
-                    
-                    wordScore += letterPoints;
-                }
-            }
-        }
-        
-        wordScore *= wordMultiplier;
-
-        getCurrentPlayer().addScore(wordScore);
-
-        std::cout << "Score: " << wordScore << " points added!" << std::endl;
-        if (wordMultiplier > 1) {
-            std::cout << "Word multiplier: x" << wordMultiplier << std::endl;
-        }
-        std::cout << getCurrentPlayer().getName() 
-                  << " total score: " << getCurrentPlayer().getScore() << std::endl;
-
-        currentWordPositions.clear();
-        gameState = GameState::PLAYING;
-        
-        handleTurnCompletion(true);
-
-        return true;
-    } else {
-        std::cout << "'" << word << "' is not in the dictionary!" << std::endl;
-        cancelWord();
-        consecutiveFailures++;
-        getCurrentPlayer().shuffleRack();
-        
-        if (checkFailureGameEnd()) {
-            return false;
-        }
-        
+    // Find ALL words formed by this move (main word + cross-words)
+    std::vector<WordInfo> allWords = findAllWordsFormed();
+    
+    if (allWords.empty()) {
+        std::cout << "No valid words formed!" << std::endl;
         return false;
     }
+
+    // Validate ALL words must be in dictionary
+    std::cout << "Checking all words formed:" << std::endl;
+    for (const auto& wordInfo : allWords) {
+        std::cout << "  '" << wordInfo.word << "' (" 
+                  << (wordInfo.isHorizontal ? "horizontal" : "vertical") << ")" << std::endl;
+        
+        if (!isValidWord(wordInfo.word)) {
+            std::cout << "Invalid word found: '" << wordInfo.word << "'" << std::endl;
+            std::cout << "All words must be valid! Canceling move..." << std::endl;
+            cancelWord();
+            consecutiveFailures++;
+            getCurrentPlayer().shuffleRack();
+            
+            if (checkFailureGameEnd()) {
+                return false;
+            }
+            return false;
+        }
+    }
+
+    // Calculate total score from ALL words
+    int totalScore = 0;
+    std::cout << "All words are valid! Calculating scores:" << std::endl;
+    
+    for (const auto& wordInfo : allWords) {
+        int wordScore = calculateWordScore(wordInfo);
+        totalScore += wordScore;
+        std::cout << "  '" << wordInfo.word << "' = " << wordScore << " points" << std::endl;
+    }
+
+    getCurrentPlayer().addScore(totalScore);
+    
+    std::cout << "Total score: " << totalScore << " points added!" << std::endl;
+    std::cout << getCurrentPlayer().getName() 
+              << " total score: " << getCurrentPlayer().getScore() << std::endl;
+
+    currentWordPositions.clear();
+    gameState = GameState::PLAYING;
+    
+    handleTurnCompletion(true);
+    return true;
+}
+
+std::vector<WordInfo> Game::findAllWordsFormed() const {
+    std::vector<WordInfo> allWords;
+    std::set<std::string> processedWords;
+    
+    if (currentWordPositions.empty()) return allWords;
+    
+    auto sortedPositions = currentWordPositions;
+    std::sort(sortedPositions.begin(), sortedPositions.end(), 
+        [](const std::pair<int, int>& a, const std::pair<int, int>& b) {
+            if (a.first == b.first) return a.second < b.second;
+            return a.first < b.first;
+        });
+    
+    bool mainIsHorizontal = (sortedPositions[0].first == sortedPositions.back().first);
+    
+    WordInfo mainWord = findWordAtPosition(
+        sortedPositions[0].first, 
+        sortedPositions[0].second, 
+        mainIsHorizontal
+    );
+    
+    if (mainWord.word.length() > 1) {
+        for (const auto& pos : currentWordPositions) {
+            if (std::find(mainWord.positions.begin(), mainWord.positions.end(), pos) != mainWord.positions.end()) {
+                mainWord.newTilePositions.push_back(pos);
+            }
+        }
+        allWords.push_back(mainWord);
+        processedWords.insert(mainWord.word + std::to_string(mainWord.startRow) + std::to_string(mainWord.startCol));
+    }
+
+    for (const auto& pos : currentWordPositions) {
+        WordInfo crossWord = findWordAtPosition(pos.first, pos.second, !mainIsHorizontal);
+        
+        if (crossWord.word.length() > 1) {
+            std::string key = crossWord.word + std::to_string(crossWord.startRow) + std::to_string(crossWord.startCol);
+            if (processedWords.find(key) == processedWords.end()) {
+                crossWord.newTilePositions.push_back(pos);
+                allWords.push_back(crossWord);
+                processedWords.insert(key);
+            }
+        }
+    }
+    
+    return allWords;
+}
+
+WordInfo Game::findWordAtPosition(int row, int col, bool horizontal) const {
+    WordInfo wordInfo;
+    wordInfo.isHorizontal = horizontal;
+    
+    if (horizontal) {
+        int startCol = col;
+        int endCol = col;
+        
+        while (startCol > 0 && board.getTile(row, startCol - 1) != nullptr) {
+            startCol--;
+        }
+        
+        while (endCol < 14 && board.getTile(row, endCol + 1) != nullptr) {
+            endCol++;
+        }
+        
+        wordInfo.startRow = row;
+        wordInfo.startCol = startCol;
+        
+        for (int c = startCol; c <= endCol; c++) {
+            const Tile* tile = board.getTile(row, c);
+            if (tile) {
+                wordInfo.word += tile->getLetter();
+                wordInfo.positions.push_back({row, c});
+            }
+        }
+    } else {
+        int startRow = row;
+        int endRow = row;
+        
+        while (startRow > 0 && board.getTile(startRow - 1, col) != nullptr) {
+            startRow--;
+        }
+        
+        while (endRow < 14 && board.getTile(endRow + 1, col) != nullptr) {
+            endRow++;
+        }
+        
+        wordInfo.startRow = startRow;
+        wordInfo.startCol = col;
+        
+        for (int r = startRow; r <= endRow; r++) {
+            const Tile* tile = board.getTile(r, col);
+            if (tile) {
+                wordInfo.word += tile->getLetter();
+                wordInfo.positions.push_back({r, col});
+            }
+        }
+    }
+    
+    return wordInfo;
+}
+
+int Game::calculateWordScore(const WordInfo& wordInfo) const {
+    int score = 0;
+    int wordMultiplier = 1;
+    
+    for (const auto& pos : wordInfo.positions) {
+        const Tile* tile = board.getTile(pos.first, pos.second);
+        if (tile) {
+            int letterPoints = tile->getPoints();
+            
+            bool isNewlyPlaced = std::find(wordInfo.newTilePositions.begin(), 
+                                         wordInfo.newTilePositions.end(), 
+                                         pos) != wordInfo.newTilePositions.end();
+            
+            if (isNewlyPlaced) {
+                SpecialSquare special = board.getSpecialSquare(pos.first, pos.second);
+                
+                switch (special) {
+                    case SpecialSquare::DOUBLE_LETTER:
+                        letterPoints *= 2;
+                        std::cout << "    " << tile->getLetter() << " gets double letter bonus" << std::endl;
+                        break;
+                    case SpecialSquare::TRIPLE_LETTER:
+                        letterPoints *= 3;
+                        std::cout << "    " << tile->getLetter() << " gets triple letter bonus" << std::endl;
+                        break;
+                    case SpecialSquare::DOUBLE_WORD:
+                    case SpecialSquare::CENTER:
+                        wordMultiplier *= 2;
+                        std::cout << "    Word '" << wordInfo.word << "' gets double word bonus" << std::endl;
+                        break;
+                    case SpecialSquare::TRIPLE_WORD:
+                        wordMultiplier *= 3;
+                        std::cout << "    Word '" << wordInfo.word << "' gets triple word bonus" << std::endl;
+                        break;
+                    default:
+                        break;
+                }
+            }
+            
+            score += letterPoints;
+        }
+    }
+    
+    return score * wordMultiplier;
 }
 
 void Game::cancelWord() {
