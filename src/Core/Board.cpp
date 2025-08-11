@@ -76,15 +76,18 @@ bool Board::isValidPlacement(int row, int col, const vector<Tile>& tilesToPlace,
     }
 
     if (isEmpty()) {
+        bool isHorizontal = (direction == "HORIZONTAL" || direction == "H");
+        
         for (size_t i = 0; i < tilesToPlace.size(); i++) {
             int curRow = isVertical ? row + static_cast<int>(i) : row;
             int curCol = isHorizontal ? col + static_cast<int>(i) : col;
 
+            // Check if word crosses center square
             if (curRow == 7 && curCol == 7) {
                 return true;
             }
         }
-        return false; // Must place on center square if board is empty
+        return false; // First word MUST cross center
     }
 
     bool connectsToExisting = false;

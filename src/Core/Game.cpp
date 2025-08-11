@@ -135,8 +135,8 @@ void Game::selectTileFromRack(int index) {
         }
         
         if (!rack.empty()) {
-            std::cout << "Selected tile: " << rack[selectedTileIndex].getLetter() 
-                      << " at position " << (selectedTileIndex + 1) << "/" << rack.size() << std::endl;
+            // std::cout << "Selected tile: " << rack[selectedTileIndex].getLetter() 
+            //           << " at position " << (selectedTileIndex + 1) << "/" << rack.size() << std::endl;
         }
     }
 }
@@ -149,8 +149,8 @@ void Game::selectNextTile() {
     const auto& rack = getCurrentPlayer().getRack();
     if (!rack.empty()) {
         selectedTileIndex = (selectedTileIndex + 1) % rack.size();
-        std::cout << "Selected tile: " << rack[selectedTileIndex].getLetter() 
-                  << " (position " << selectedTileIndex + 1 << "/" << rack.size() << ")" << std::endl;
+        // std::cout << "Selected tile: " << rack[selectedTileIndex].getLetter() 
+        //           << " (position " << selectedTileIndex + 1 << "/" << rack.size() << ")" << std::endl;
     }
 }
 
@@ -158,8 +158,8 @@ void Game::selectPreviousTile() {
     const auto& rack = getCurrentPlayer().getRack();
     if (!rack.empty()) {
         selectedTileIndex = (selectedTileIndex - 1 + rack.size()) % rack.size();
-        std::cout << "Selected tile: " << rack[selectedTileIndex].getLetter() 
-                  << " (position " << selectedTileIndex + 1 << "/" << rack.size() << ")" << std::endl;
+        // std::cout << "Selected tile: " << rack[selectedTileIndex].getLetter() 
+        //           << " (position " << selectedTileIndex + 1 << "/" << rack.size() << ")" << std::endl;
     }
 }
 
@@ -1021,6 +1021,12 @@ bool Game::placeTileFromRack(int row, int col) {
         selectedTileIndex = 0;
     }
 
+    if (board.isEmpty() && !wouldCrossCenter(row, col)) {
+        std::cout << "❌ FIRST WORD MUST CROSS THE CENTER SQUARE (★)!" << std::endl;
+        return false;
+    }
+
+
     // Show which tile we're about to place
     std::cout << "Placing tile: " << rack[selectedTileIndex].getLetter() 
               << " from position " << selectedTileIndex + 1 << std::endl;
@@ -1065,6 +1071,43 @@ bool Game::placeTileFromRack(int row, int col) {
     }
 
     return false;
+}
+
+bool Game::wouldCrossCenter(int row, int col) const {
+    // If this is the first tile and it's on center, it crosses
+    if (currentWordPositions.empty()) {
+        return (row == 7 && col == 7);
+    }
+    
+    // Check if current word (including new tile) would cross center
+    auto allPositions = currentWordPositions;
+    allPositions.push_back({row, col});
+    
+    // Sort positions to determine word direction
+    std::sort(allPositions.begin(), allPositions.end(), 
+        [](const std::pair<int, int>& a, const std::pair<int, int>& b) {
+            if (a.first == b.first) return a.second < b.second;
+            return a.first < b.first;
+        });
+    
+    // Check if word spans across center square (7,7)
+    bool isHorizontal = (allPositions[0].first == allPositions.back().first);
+    
+    if (isHorizontal) {
+        // Horizontal word - check if row is 7 and word spans column 7
+        int wordRow = allPositions[0].first;
+        int startCol = allPositions[0].second;
+        int endCol = allPositions.back().second;
+        
+        return (wordRow == 7 && startCol <= 7 && endCol >= 7);
+    } else {
+        // Vertical word - check if column is 7 and word spans row 7
+        int wordCol = allPositions[0].second;
+        int startRow = allPositions[0].first;
+        int endRow = allPositions.back().first;
+        
+        return (wordCol == 7 && startRow <= 7 && endRow >= 7);
+    }
 }
 
 bool Game::validateCurrentWord() {
@@ -1397,8 +1440,8 @@ bool Game::handleKeyPress(SDL_Keycode key) {
                 std::cout << getCurrentPlayer().getName() << "'s rack shuffled!" << std::endl;
                 
                 if (!rack.empty()) {
-                    std::cout << "Selected tile is now: " << rack[selectedTileIndex].getLetter() 
-                              << " at position " << (selectedTileIndex + 1) << "/" << rack.size() << std::endl;
+                    // std::cout << "Selected tile is now: " << rack[selectedTileIndex].getLetter() 
+                    //           << " at position " << (selectedTileIndex + 1) << "/" << rack.size() << std::endl;
                     
                     std::cout << "Rack: ";
                     for (size_t i = 0; i < rack.size(); i++) {
