@@ -133,7 +133,7 @@ void GameRenderer::renderSelectedTileIndicator(const Game& game) {
 
     
     if (!rack.empty() && selectedIndex >= 0 && selectedIndex < static_cast<int>(rack.size())) {
-        std::cout << "Selected tile letter: " << rack[selectedIndex].getLetter() << std::endl;
+        // std::cout << "Selected tile letter: " << rack[selectedIndex].getLetter() << std::endl;
     }
     
     // Check all the conditions

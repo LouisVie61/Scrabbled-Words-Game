@@ -184,4 +184,5 @@ public:
     std::vector<WordInfo> findAllWordsFormed() const;
     WordInfo findWordAtPosition(int row, int col, bool horizontal) const;
     int calculateWordScore(const WordInfo& wordInfo) const;
+    bool wouldCrossCenter(int row, int col) const;
 };
