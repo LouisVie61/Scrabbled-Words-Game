@@ -72,7 +72,6 @@ bool Game::setupGame(GameMode mode, const std::string& player1Name,
                      const std::string& player2Name) {
     gameMode = mode;
     
-    // Initialize players based on game mode
     switch (mode) {
         case GameMode::HUMAN_VS_HUMAN:
             player1 = Player(player1Name, PlayerType::HUMAN);
@@ -90,7 +89,6 @@ bool Game::setupGame(GameMode mode, const std::string& player1Name,
             break;
     }
     
-    // Initialize game components
     initializeTileBag();
     fillPlayerRacks();
     
@@ -135,8 +133,6 @@ void Game::selectTileFromRack(int index) {
         }
         
         if (!rack.empty()) {
-            // std::cout << "Selected tile: " << rack[selectedTileIndex].getLetter() 
-            //           << " at position " << (selectedTileIndex + 1) << "/" << rack.size() << std::endl;
         }
     }
 }
@@ -149,8 +145,6 @@ void Game::selectNextTile() {
     const auto& rack = getCurrentPlayer().getRack();
     if (!rack.empty()) {
         selectedTileIndex = (selectedTileIndex + 1) % rack.size();
-        // std::cout << "Selected tile: " << rack[selectedTileIndex].getLetter() 
-        //           << " (position " << selectedTileIndex + 1 << "/" << rack.size() << ")" << std::endl;
     }
 }
 
@@ -158,8 +152,6 @@ void Game::selectPreviousTile() {
     const auto& rack = getCurrentPlayer().getRack();
     if (!rack.empty()) {
         selectedTileIndex = (selectedTileIndex - 1 + rack.size()) % rack.size();
-        // std::cout << "Selected tile: " << rack[selectedTileIndex].getLetter() 
-        //           << " (position " << selectedTileIndex + 1 << "/" << rack.size() << ")" << std::endl;
     }
 }
 
@@ -168,12 +160,10 @@ bool Game::loadDictionary(const std::string& filename) {
 }
 
 void Game::initializeTileBag() {
-    // Clear existing tiles
     while (!tileBag.empty()) {
         tileBag.pop();
     }
     
-    // Standard Scrabble tile distribution
     struct TileInfo { char letter; int count; };
     
     std::vector<TileInfo> tileDistribution = {
@@ -181,21 +171,19 @@ void Game::initializeTileBag() {
         {'G', 3}, {'H', 2}, {'I', 9}, {'J', 1}, {'K', 1}, {'L', 4},
         {'M', 2}, {'N', 6}, {'O', 8}, {'P', 2}, {'Q', 1}, {'R', 6},
         {'S', 4}, {'T', 6}, {'U', 4}, {'V', 2}, {'W', 2}, {'X', 1},
-        {'Y', 2}, {'Z', 1}, {' ', 2} // 2 blank tiles
+        {'Y', 2}, {'Z', 1}, {' ', 2}
     };
     
-    // Add tiles to bag
     for (const auto& tileInfo : tileDistribution) {
         for (int i = 0; i < tileInfo.count; ++i) {
             if (tileInfo.letter == ' ') {
-                tileBag.push(Tile()); // Blank tile
+                tileBag.push(Tile());
             } else {
-                tileBag.push(Tile(tileInfo.letter)); // Auto-assigns points
+                tileBag.push(Tile(tileInfo.letter));
             }
         }
     }
     
-    // Shuffle the tile bag
     std::vector<Tile> tempTiles;
     while (!tileBag.empty()) {
         tempTiles.push_back(tileBag.front());
@@ -222,7 +210,6 @@ bool Game::drawTilesForPlayer(Player& player, int count) {
 }
 
 void Game::fillPlayerRacks() {
-    // Fill both players' racks to 7 tiles
     while (player1.getRackSize() < 7 && !tileBag.empty()) {
         drawTilesForPlayer(player1, 1);
     }
@@ -254,7 +241,6 @@ bool Game::isGameRunning() const {
 }
 
 void Game::startNewGame() {
-    // Reset board and game state
     std::cout<< "Starting a new game ..." << std::endl;
 
     board.clear();
@@ -281,46 +267,27 @@ void Game::endGame() {
     gameOver = true;
     
     std::cout << "\nGAME OVER!" << std::endl;
-    std::cout << "========== FINAL SCORE CALCULATION ==========" << std::endl;
+    std::cout << "========== FINAL SCORES ==========" << std::endl;
     
-    // Show scores before final adjustments
-    std::cout << "Scores before final calculation:" << std::endl;
     std::cout << player1.getName() << ": " << player1.getScore() << " points" << std::endl;
     std::cout << player2.getName() << ": " << player2.getScore() << " points" << std::endl;
     
-    // Calculate remaining tile penalties
-    int player1TilePenalty = 0;
-    int player2TilePenalty = 0;
+    std::cout << "\nGame Statistics:" << std::endl;
+    std::cout << player1.getName() << " tiles remaining: " << player1.getRackSize() << std::endl;
+    std::cout << player2.getName() << " tiles remaining: " << player2.getRackSize() << std::endl;
+    
+    int player1TileValue = 0;
+    int player2TileValue = 0;
     
     for (const auto& tile : player1.getRack()) {
-        player1TilePenalty += tile.getPoints();
+        player1TileValue += tile.getPoints();
     }
     for (const auto& tile : player2.getRack()) {
-        player2TilePenalty += tile.getPoints();
+        player2TileValue += tile.getPoints();
     }
     
-    std::cout << "\nRemaining tile penalties:" << std::endl;
-    std::cout << player1.getName() << ": -" << player1TilePenalty << " points" << std::endl;
-    std::cout << player2.getName() << ": -" << player2TilePenalty << " points" << std::endl;
-    
-    player1.subtractScore(player1TilePenalty);
-    player2.subtractScore(player2TilePenalty);
-    
-    // If someone used all their tiles, they get the opponent's tile points as bonus
-    if (player1.getRackSize() == 0 && player2TilePenalty > 0) {
-        player1.addScore(player2TilePenalty);
-        std::cout << player1.getName() << " gets +" << player2TilePenalty 
-                  << " bonus for using all tiles!" << std::endl;
-    } else if (player2.getRackSize() == 0 && player1TilePenalty > 0) {
-        player2.addScore(player1TilePenalty);
-        std::cout << player2.getName() << " gets +" << player1TilePenalty 
-                  << " bonus for using all tiles!" << std::endl;
-    }
-    
-    // Final scores
-    std::cout << "\n========== FINAL SCORES ==========" << std::endl;
-    std::cout << player1.getName() << ": " << player1.getScore() << " points" << std::endl;
-    std::cout << player2.getName() << ": " << player2.getScore() << " points" << std::endl;
+    std::cout << player1.getName() << " remaining tile value: " << player1TileValue << " points" << std::endl;
+    std::cout << player2.getName() << " remaining tile value: " << player2TileValue << " points" << std::endl;
     
     determineWinner();
 }
@@ -437,7 +404,6 @@ bool Game::playWord(const std::string& word, int startRow, int startCol,
         return false;
     }
     
-    // Place tiles on board
     bool isHorizontal = (direction == "HORIZONTAL" || direction == "H");
     for (size_t i = 0; i < tiles.size(); ++i) {
         int row = isHorizontal ? startRow : startRow + static_cast<int>(i);
@@ -445,7 +411,6 @@ bool Game::playWord(const std::string& word, int startRow, int startCol,
         board.placeTile(row, col, tiles[i]);
     }
     
-    // Calculate and add score
     int score = calculateWordScore(word, startRow, startCol, direction);
     getCurrentPlayer().addScore(score);
     
@@ -465,10 +430,9 @@ bool Game::playWord(const std::string& word, int startRow, int startCol,
 
 bool Game::exchangeTiles(const std::vector<int>& tileIndices) {
     if (tileBag.size() < tileIndices.size()) {
-        return false; // Not enough tiles in bag
+        return false;
     }
     
-    // Remove tiles from rack and add to bag
     std::vector<Tile> exchangedTiles;
     auto sortedIndices = tileIndices;
     std::sort(sortedIndices.rbegin(), sortedIndices.rend());
@@ -481,11 +445,8 @@ bool Game::exchangeTiles(const std::vector<int>& tileIndices) {
         }
     }
     
-    // Draw new tiles
+
     drawTilesForPlayer(getCurrentPlayer(), static_cast<int>(tileIndices.size()));
-    
-    // Add exchanged tiles back to bag (should shuffle)
-    // For simplicity, we'll skip the shuffle for now
     
     consecutivePasses = 0;
     
@@ -500,7 +461,6 @@ void Game::skipTurn() {
     consecutivePasses++;
     std::cout << "Consecutive passes: " << consecutivePasses << "/" << MAX_CONSECUTIVE_PASSES << std::endl;
     
-    // Check for game end before switching turns
     if (consecutivePasses >= MAX_CONSECUTIVE_PASSES) {
         std::cout << "🔚 Game ending due to " << MAX_CONSECUTIVE_PASSES << " consecutive passes!" << std::endl;
         endGame();
@@ -512,7 +472,6 @@ void Game::skipTurn() {
     
     std::cout << "Now it's " << getCurrentPlayer().getName() << "'s turn." << std::endl;
     
-    // Show the new player's rack
     const auto& rack = getCurrentPlayer().getRack();
     std::cout << "Your tiles: ";
     for (size_t i = 0; i < rack.size(); i++) {
@@ -524,7 +483,6 @@ void Game::skipTurn() {
     }
     std::cout << std::endl;
     
-    // Reset selected tile index if it's out of bounds for new player
     if (selectedTileIndex >= static_cast<int>(rack.size()) && !rack.empty()) {
         selectedTileIndex = 0;
         std::cout << "Selected: " << rack[selectedTileIndex].getLetter() 
@@ -632,16 +590,14 @@ void Game::printGameState() const {
 void Game::placeTestWord() {
     std::cout << "\nPlacing test word 'HELLO' on the board..." << std::endl;
     
-    // Create tiles for HELLO
     std::vector<Tile> testTiles = {
-        Tile('H', 4),  // H is worth 4 points
-        Tile('E', 1),  // E is worth 1 point
-        Tile('L', 1),  // L is worth 1 point
-        Tile('L', 1),  // L is worth 1 point
-        Tile('O', 1)   // O is worth 1 point
+        Tile('H', 4),
+        Tile('E', 1),
+        Tile('L', 1),
+        Tile('L', 1),
+        Tile('O', 1)
     };
     
-    // Place horizontally starting from center (row 7, col 6)
     int startRow = 7, startCol = 6;
     bool success = true;
     
@@ -656,7 +612,6 @@ void Game::placeTestWord() {
         std::cout << "Successfully placed 'HELLO' on board!" << std::endl;
         std::cout << "Location: Row " << startRow << ", Columns " << startCol << "-" << (startCol + 4) << std::endl;
         
-        // Calculate and show score
         int score = calculateWordScore("HELLO", startRow, startCol, "HORIZONTAL");
         std::cout << "Word score: " << score << " points" << std::endl;
     } else {
@@ -669,7 +624,6 @@ void Game::givePlayerTestTiles() {
     
     std::cout << "\nGiving test tiles to " << current.getName() << "..." << std::endl;
     
-    // Clear current rack and add test tiles
     current.clearRack();
     
     std::vector<Tile> testTiles = {
@@ -688,12 +642,11 @@ void Game::givePlayerTestTiles() {
 void Game::testScoring() {
     std::cout << "\nTESTING SCORING SYSTEM" << std::endl;
     
-    // Test different words and their scores
     std::vector<std::pair<std::string, std::pair<int, int>>> testWords = {
-        {"CAT", {7, 5}},      // Row 7, Col 5
-        {"DOG", {8, 7}},      // Row 8, Col 7  
-        {"GAME", {6, 3}},     // Row 6, Col 3
-        {"TEST", {9, 10}}     // Row 9, Col 10
+        {"CAT", {7, 5}},
+        {"DOG", {8, 7}},
+        {"GAME", {6, 3}},
+        {"TEST", {9, 10}}
     };
     
     for (const auto& test : testWords) {
@@ -737,7 +690,6 @@ void Game::handleEvents() {
                 
             case SDL_EVENT_MOUSE_BUTTON_DOWN:
                 if (event.button.button == SDL_BUTTON_LEFT) {
-                    // Store mouse position for rendering
                     mouseX = static_cast<int>(event.button.x);
                     mouseY = static_cast<int>(event.button.y);
                     
@@ -880,7 +832,6 @@ bool Game::handleMouseClick(int x, int y) {
         return false;
     }
     
-    // Check if click is on board
     int row, col;
     if (gameRenderer->isPointInBoard(x, y, row, col)) {
         std::cout << "Clicked on board cell: (" << row << ", " << col << ")" << std::endl;
@@ -914,9 +865,7 @@ bool Game::handlePauseMenuClick(int x, int y) {
             return true;
             
         case PauseMenuOption::SURRENDER:
-            // Current player surrenders
             std::cout << getCurrentPlayer().getName() << " surrendered!" << std::endl;
-            getOtherPlayer().addScore(100); // Bonus for opponent
             endGame();
             return true;
             
@@ -940,37 +889,32 @@ int Game::getRackTileIndexFromMouse(int mouseX, int mouseY) const {
     const float RACK_PADDING = 50.0f;
     const float TILE_SIZE = 35.0f;
     
-    // Calculate rack position to match GameRenderer::renderPlayerRacks
     const float BOARD_SIZE = 15;
     const float CELL_SIZE = 35;
-    const float BOARD_OFFSET_X = 150.0f;  // Updated to match GameRenderer
-    const float BOARD_OFFSET_Y = 80.0f;   // Updated to match GameRenderer
+    const float BOARD_OFFSET_X = 150.0f;
+    const float BOARD_OFFSET_Y = 80.0f;
     
     const float boardHeight = BOARD_SIZE * CELL_SIZE;
     
     const float rackY = BOARD_OFFSET_Y + boardHeight + 50.0f;
     const float totalRackWidth = 7.0f * TILE_SPACING;
     
-    // Center the rack but ensure it fits within screen bounds
     float rackStartX = (WINDOW_WIDTH - totalRackWidth) / 2.0f;
     
-    // Ensure minimum margins (same logic as renderPlayerRacks)
     if (rackStartX < 30.0f) {
         rackStartX = 30.0f;
     } else if (rackStartX + totalRackWidth > WINDOW_WIDTH - 30.0f) {
         rackStartX = WINDOW_WIDTH - totalRackWidth - 30.0f;
     }
     
-    // Check if mouse is in the rack area vertically
     if (mouseY < rackY || mouseY > rackY + TILE_SIZE) {
-        return -1; // Not in rack area
+        return -1;
     }
     
     const auto& rack = getCurrentPlayer().getRack();
     const float actualRackWidth = static_cast<float>(rack.size()) * TILE_SPACING;
     const float centerOffset = (totalRackWidth - actualRackWidth) / 2.0f;
     
-    // Calculate which tile was clicked    
     for (size_t i = 0; i < rack.size(); i++) {
         float tileX = rackStartX + centerOffset + (i * TILE_SPACING);
         
@@ -979,7 +923,7 @@ int Game::getRackTileIndexFromMouse(int mouseX, int mouseY) const {
         }
     }
     
-    return -1; // No tile clicked
+    return -1;
 }
 
 void Game::startWordPlacement() {
@@ -989,7 +933,6 @@ void Game::startWordPlacement() {
         wordInProgress = true;
         gameState = GameState::PLACING_TILES;
         
-        // Show current player's rack with selection indicator
         const auto& rack = getCurrentPlayer().getRack();
         std::cout << "Your tiles: ";
         for (size_t i = 0; i < rack.size(); i++) {
@@ -1008,12 +951,10 @@ bool Game::placeTileFromRack(int row, int col) {
     auto& rack = currentPlayer.getRack();
 
     if (board.getTile(row, col) != nullptr) {
-        std::cout << "Cell already occupied!" << std::endl;
         return false;
     }
 
     if (rack.empty()) {
-        std::cout << "No tiles in rack to place!" << std::endl;
         return false;
     }
 
@@ -1022,14 +963,9 @@ bool Game::placeTileFromRack(int row, int col) {
     }
 
     if (board.isEmpty() && !wouldCrossCenter(row, col)) {
-        std::cout << "❌ FIRST WORD MUST CROSS THE CENTER SQUARE (★)!" << std::endl;
         return false;
     }
 
-
-    // Show which tile we're about to place
-    std::cout << "Placing tile: " << rack[selectedTileIndex].getLetter() 
-              << " from position " << selectedTileIndex + 1 << std::endl;
 
 
     Tile tileToPlace = rack[selectedTileIndex];
@@ -1042,7 +978,6 @@ bool Game::placeTileFromRack(int row, int col) {
                   << "' at (" << row << ", " << col << ")" << std::endl;
         std::cout << "Press ENTER to confirm word, or BACKSPACE to cancel" << std::endl;
         
-        // FIX: Update selectedTileIndex after tile removal
         if (!rack.empty()) {
             if (selectedTileIndex >= static_cast<int>(rack.size())) {
                 selectedTileIndex = rack.size() - 1;
@@ -1074,34 +1009,28 @@ bool Game::placeTileFromRack(int row, int col) {
 }
 
 bool Game::wouldCrossCenter(int row, int col) const {
-    // If this is the first tile and it's on center, it crosses
     if (currentWordPositions.empty()) {
         return (row == 7 && col == 7);
     }
     
-    // Check if current word (including new tile) would cross center
     auto allPositions = currentWordPositions;
     allPositions.push_back({row, col});
     
-    // Sort positions to determine word direction
     std::sort(allPositions.begin(), allPositions.end(), 
         [](const std::pair<int, int>& a, const std::pair<int, int>& b) {
             if (a.first == b.first) return a.second < b.second;
             return a.first < b.first;
         });
     
-    // Check if word spans across center square (7,7)
     bool isHorizontal = (allPositions[0].first == allPositions.back().first);
     
     if (isHorizontal) {
-        // Horizontal word - check if row is 7 and word spans column 7
         int wordRow = allPositions[0].first;
         int startCol = allPositions[0].second;
         int endCol = allPositions.back().second;
         
         return (wordRow == 7 && startCol <= 7 && endCol >= 7);
     } else {
-        // Vertical word - check if column is 7 and word spans row 7
         int wordCol = allPositions[0].second;
         int startRow = allPositions[0].first;
         int endRow = allPositions.back().first;
@@ -1116,7 +1045,6 @@ bool Game::validateCurrentWord() {
         return false;
     }
 
-    // Find ALL words formed by this move (main word + cross-words)
     std::vector<WordInfo> allWords = findAllWordsFormed();
     
     if (allWords.empty()) {
@@ -1124,7 +1052,6 @@ bool Game::validateCurrentWord() {
         return false;
     }
 
-    // Validate ALL words must be in dictionary
     std::cout << "Checking all words formed:" << std::endl;
     for (const auto& wordInfo : allWords) {
         std::cout << "  '" << wordInfo.word << "' (" 
@@ -1144,7 +1071,6 @@ bool Game::validateCurrentWord() {
         }
     }
 
-    // Calculate total score from ALL words
     int totalScore = 0;
     std::cout << "All words are valid! Calculating scores:" << std::endl;
     
@@ -1286,20 +1212,16 @@ int Game::calculateWordScore(const WordInfo& wordInfo) const {
                 switch (special) {
                     case SpecialSquare::DOUBLE_LETTER:
                         letterPoints *= 2;
-                        std::cout << "    " << tile->getLetter() << " gets double letter bonus" << std::endl;
                         break;
                     case SpecialSquare::TRIPLE_LETTER:
                         letterPoints *= 3;
-                        std::cout << "    " << tile->getLetter() << " gets triple letter bonus" << std::endl;
                         break;
                     case SpecialSquare::DOUBLE_WORD:
                     case SpecialSquare::CENTER:
                         wordMultiplier *= 2;
-                        std::cout << "    Word '" << wordInfo.word << "' gets double word bonus" << std::endl;
                         break;
                     case SpecialSquare::TRIPLE_WORD:
                         wordMultiplier *= 3;
-                        std::cout << "    Word '" << wordInfo.word << "' gets triple word bonus" << std::endl;
                         break;
                     default:
                         break;
@@ -1316,7 +1238,6 @@ int Game::calculateWordScore(const WordInfo& wordInfo) const {
 void Game::cancelWord() {
     Player& currentPlayer = getCurrentPlayer();
     
-    // Return all placed tiles to rack
     for (const auto& pos : currentWordPositions) {
         const Tile* tile = board.getTile(pos.first, pos.second);
         if (tile) {
@@ -1327,7 +1248,6 @@ void Game::cancelWord() {
     
     currentWordPositions.clear();
     gameState = GameState::PLAYING;
-    std::cout << "Word cancelled. Tiles returned to rack." << std::endl;
 }
 
 std::string Game::buildWordFromPositions() const {
@@ -1361,7 +1281,6 @@ std::string Game::buildWordFromPositions() const {
             if (tile) {
                 word += tile->getLetter();
             } else {
-                std::cerr << "Error: Missing tile at (" << row << ", " << col << ")" << std::endl;
                 return word;
             }
         }
@@ -1386,7 +1305,6 @@ std::string Game::buildWordFromPositions() const {
             if (tile) {
                 word += tile->getLetter();
             } else {
-                std::cerr << "Error: Missing tile at (" << row << ", " << col << ")" << std::endl;
                 return word;
             }
         }
@@ -1410,13 +1328,11 @@ bool Game::handleKeyPress(SDL_Keycode key) {
             
         case SDLK_ESCAPE:
             if (gameState == GameState::PAUSED) {
-                std::cout << "Quitting game..." << std::endl;
                 isRunning = false;
             } else if (gameState == GameState::PLACING_TILES) {
                 cancelWord();
             } else if (gameState == GameState::PLAYING) {
                 gameState = GameState::PAUSED;
-                std::cout << "Game paused. Click menu options or press ESC again to quit." << std::endl;
             } else {
                 isRunning = false;
             }
@@ -1440,9 +1356,6 @@ bool Game::handleKeyPress(SDL_Keycode key) {
                 std::cout << getCurrentPlayer().getName() << "'s rack shuffled!" << std::endl;
                 
                 if (!rack.empty()) {
-                    // std::cout << "Selected tile is now: " << rack[selectedTileIndex].getLetter() 
-                    //           << " at position " << (selectedTileIndex + 1) << "/" << rack.size() << std::endl;
-                    
                     std::cout << "Rack: ";
                     for (size_t i = 0; i < rack.size(); i++) {
                         if (i == selectedTileIndex) {
@@ -1532,7 +1445,7 @@ size_t Game::getTileBagSize() const {
 }
 
 std::vector<TilePlacement> Game::getCurrentWord() const {
-    std::vector<TilePlacement> placements; // Create local vector
+    std::vector<TilePlacement> placements;
     
     for (const auto& pos : currentWordPositions) {
         const Tile* tile = board.getTile(pos.first, pos.second);
@@ -1545,7 +1458,7 @@ std::vector<TilePlacement> Game::getCurrentWord() const {
         }
     }
     
-    return placements; // Return by value
+    return placements;
 }
 
 void Game::refreshBothPlayerRacks() {

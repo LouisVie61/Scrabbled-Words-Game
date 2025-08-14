@@ -72,5 +72,5 @@ int Tile::getPointsForLetter(char letter) {
     if (it != LETTER_POINTS.end()) {
         return it->second;
     }
-    return 0; // Return 0 points for invalid letters
+    return 0;
 }

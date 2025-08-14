@@ -36,23 +36,21 @@ bool Player::isAI() const {
     return playerType != PlayerType::HUMAN;
 }
 
-// Score management
 void Player::addScore(int points) {
     score += points;
 }
 
 void Player::subtractScore(int points) {
-    score = std::max(0, score - points); // Don't go below 0
+    score = std::max(0, score - points);
 }
 
 void Player::resetScore() {
     score = 0;
 }
 
-// Rack management
 bool Player::addTileToRack(const Tile& tile) {
     if (rack.size() >= RACK_SIZE) {
-        return false; // Rack is full
+        return false; 
     }
     
     rack.push_back(tile);
@@ -61,7 +59,7 @@ bool Player::addTileToRack(const Tile& tile) {
 
 bool Player::removeTileFromRack(int index) {
     if (index < 0 || index >= static_cast<int>(rack.size())) {
-        return false; // Invalid index
+        return false;
     }
     
     rack.erase(rack.begin() + index);
@@ -70,7 +68,7 @@ bool Player::removeTileFromRack(int index) {
 
 Tile* Player::getTileFromRack(int index) {
     if (index < 0 || index >= static_cast<int>(rack.size())) {
-        return nullptr; // Invalid index
+        return nullptr;
     }
     
     return &rack[index];
@@ -88,7 +86,6 @@ void Player::clearRack() {
     rack.clear();
 }
 
-// Game actions
 void Player::shuffleRack() {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -98,10 +95,8 @@ void Player::shuffleRack() {
 bool Player::canFormWord(const std::string& word) const {
     if (word.empty()) return false;
     
-    // Create a copy of the rack to check against
     std::vector<Tile> availableTiles = rack;
     
-    // Check if we have all the letters needed
     for (char letter : word) {
         char upperLetter = std::toupper(letter);
         bool foundTile = false;
@@ -115,7 +110,7 @@ bool Player::canFormWord(const std::string& word) const {
         }
         
         if (!foundTile) {
-            return false; // Missing required letter
+            return false;
         }
     }
     
@@ -130,7 +125,6 @@ std::vector<int> Player::findTilesForWord(const std::string& word) const {
         char upperLetter = std::toupper(letter);
         bool foundTile = false;
         
-        // First, look for exact letter match
         for (size_t i = 0; i < rack.size(); ++i) {
             if (!used[i] && rack[i].getLetter() == upperLetter) {
                 tileIndices.push_back(static_cast<int>(i));
@@ -140,7 +134,6 @@ std::vector<int> Player::findTilesForWord(const std::string& word) const {
             }
         }
         
-        // If no exact match, look for blank tile
         if (!foundTile) {
             for (size_t i = 0; i < rack.size(); ++i) {
                 if (!used[i] && rack[i].getIsBlank()) {
@@ -153,7 +146,7 @@ std::vector<int> Player::findTilesForWord(const std::string& word) const {
         }
         
         if (!foundTile) {
-            return {}; // Return empty vector if word can't be formed
+            return {};
         }
     }
     
@@ -164,12 +157,6 @@ bool Player::makeAIMove() {
     if (!isAI()) {
         return false;
     }
-    
-    // TODO: Implement AI decision making
-    // - Analyze board
-    // - Find best word placement
-    // - Calculate scores
-    // - Make move
     
     std::cout << "AI " << name << " is thinking..." << std::endl;
     return true;
