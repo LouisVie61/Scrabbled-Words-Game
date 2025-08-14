@@ -50,5 +50,5 @@ public:
     std::vector<int> findTilesForWord(const string& word) const;
     
     // AI-specific methods
-    bool makeAIMove(); // Will be implemented later
+    bool makeAIMove();
 };

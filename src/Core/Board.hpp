@@ -40,25 +40,20 @@ public:
     Board();
     ~Board();
     
-    // Tile placement
     bool placeTile(int row, int col, const Tile& tile);
     bool removeTile(int row, int col);
     
-    // Getters
     Tile* getTile(int row, int col) const;
     SpecialSquare getSpecialSquare(int row, int col) const;
     
-    // Word validation
     bool isValidPlacement(int row, int col, const vector<Tile>& tiles, 
                          const string& direction) const;
     
-    // Scoring
     int calculateWordScore(int row, int col, const string& word, 
                           const string& direction) const;
 
     std::string getTilesInDirection(int startRow, int startCol, const std::string& direction, int length) const;
     
-    // Board state
     bool isEmpty() const;
     void clear();
 };

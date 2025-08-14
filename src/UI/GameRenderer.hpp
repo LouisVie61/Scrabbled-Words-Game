@@ -9,7 +9,6 @@
 #include "../Core/Player.hpp"
 #include "../Core/Tile.hpp"
 
-// Add these enums for better type safety
 enum class RenderLayer : int {
     BACKGROUND = 0,
     BOARD = 1,
@@ -33,7 +32,6 @@ private:
     TTF_Font* titleFont;
     TTF_Font* specialFont;
     
-    // Colors and styling constants
     static const SDL_Color BOARD_COLOR;
     static const SDL_Color TILE_COLOR;
     static const SDL_Color TEXT_COLOR;
@@ -45,7 +43,6 @@ private:
     static const SDL_Color GREEN_COLOR;
     static const SDL_Color RED_COLOR;
     
-    // Updated layout constants for better positioning
     static const int WINDOW_WIDTH = 1200;
     static const int WINDOW_HEIGHT = 800;
     static const int BOARD_OFFSET_X = 150;
@@ -53,7 +50,6 @@ private:
     static const int CELL_SIZE = 35;
     static const int BOARD_SIZE = 15;
 
-    // UI element positions - adjusted for new layout
     static constexpr float PLAYER_INFO_WIDTH = 180.0f;
     static constexpr float PLAYER_INFO_HEIGHT = 140.0f;
     static constexpr float PLAYER_INFO_PADDING = 20.0f;
@@ -65,13 +61,11 @@ private:
     static constexpr float MENU_WIDTH = 600.0f;
     static constexpr float MENU_HEIGHT = 400.0f;
     
-    // Pause button constants
     static constexpr float PAUSE_BUTTON_SIZE = 40.0f;
     static constexpr float PAUSE_BUTTON_MARGIN = 15.0f;
     static constexpr float PAUSE_MENU_WIDTH = 280.0f;
     static constexpr float PAUSE_MENU_HEIGHT = 220.0f;
 
-    // === HELPER CLASSES ===
     class TextureRAII {
     private:
         SDL_Texture* texture;
@@ -81,11 +75,9 @@ private:
         SDL_Texture* get() const { return texture; }
         explicit operator bool() const { return texture != nullptr; }
         
-        // Prevent copying
         TextureRAII(const TextureRAII&) = delete;
         TextureRAII& operator=(const TextureRAII&) = delete;
         
-        // Allow moving
         TextureRAII(TextureRAII&& other) noexcept : texture(other.texture) {
             other.texture = nullptr;
         }
@@ -102,12 +94,8 @@ private:
 public:
     GameRenderer(SDL_Renderer* renderer, SDL_Window* window);
     ~GameRenderer();
-
-    // === INITIALIZATION ===
     bool initializeFonts();
     void cleanupFonts();
-    
-    // === MAIN RENDERING ===
     void renderGameState(const Game& game);
     void renderBoard(const Board& board);
     void renderPickedTiles(const Game& game); 
@@ -117,16 +105,12 @@ public:
     void renderPlayerInfo(const Player& player1, const Player& player2, int currentPlayer);
     void renderScores(const Player& player1, const Player& player2);
     void renderCurrentWordScore(const Game& game);
-    
-    // === SCREEN RENDERING ===
     void renderGameStart();
     void renderMenu();
     void renderGameOver(const Player& player1, const Player& player2);
     void renderPauseScreen();
     void renderPauseButton();
     void renderPauseMenu();
-    
-    // === UTILITY ===
     void clear();
     void present();
     SDL_FRect getBoardCellRect(int row, int col) const;
@@ -146,32 +130,22 @@ public:
     static bool isTutorialVisible();
 
 private:
-    // === BOARD RENDERING HELPERS ===
     void renderGrid();
     void renderSpecialSquares(const Board& board);
     void renderSingleSpecialSquare(int row, int col, SpecialSquare special);
     void renderSpecialSquareText(float x, float y, SpecialSquare special);
-    
-    // === TILE RENDERING HELPERS ===
     void renderTiles(const Board& board);
     void renderTile(float x, float y, const Tile* tile);
     void renderPlayerRack(const Player& player, float x, float y, bool isActive);
-    
-    // === TEXT RENDERING HELPERS ===
     void renderText(const std::string& text, float x, float y, const SDL_Color& color, TTF_Font* useFont = nullptr) const;
     void renderSpecialSquareLabel(int row, int col, const std::string& label, const SDL_Color& color) const;
-    
-    // === MENU RENDERING HELPERS ===
     void renderMenuBackground() const;
     void renderMenuContent() const;
     void renderMenuInstructions() const;
-    
-    // === FONT MANAGEMENT HELPERS ===
     bool initializeTTF();
     bool loadFontsFromPaths();
     bool tryLoadFont(const std::string& path);
     void cleanupFailedFontLoad();
-    
     void renderPlayerInfoBox(const Player& player, const SDL_FRect& rect, bool isActive, bool isCurrentTurn) const;
     void renderFullWidthTitle(float elapsedTime, float startY, float titleHeight);
     void renderInformationBoxes(float elapsedTime, float startX, float startY, float boxWidth);
@@ -182,7 +156,5 @@ private:
     void renderPauseTitle(float elapsedTime, float startY, float titleHeight);
     void renderPauseContent(float elapsedTime, float startX, float startY, float boxWidth);
     void renderPauseButtons(float elapsedTime, float startX, float startY, float buttonWidth);
-
-    // === UTILITY HELPERS ===
     std::pair<std::string, SDL_Color> getSpecialSquareTextInfo(SpecialSquare special) const;
 };

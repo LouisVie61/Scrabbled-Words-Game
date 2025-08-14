@@ -58,14 +58,12 @@ vector<string> Dictionary::getSuggestions(const string& partial) const {
             word.substr(0, upperPartial.length()) == upperPartial) {
             suggestions.push_back(word);
             
-            // Limit suggestions
             if (suggestions.size() >= 50) {
                 break;
             }
         }
     }
 
-    // Sort suggestions by length (shorter words first)
     sort(suggestions.begin(), suggestions.end(), [](const std::string& a, const std::string& b) {
                   if (a.length() == b.length()) {
                       return a < b;

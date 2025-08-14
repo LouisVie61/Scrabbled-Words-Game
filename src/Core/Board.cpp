@@ -52,7 +52,7 @@ Tile* Board::getTile(int row, int col) const {
 
 SpecialSquare Board::getSpecialSquare(int row, int col) const {
     if (row < 0 || row >= BOARD_SIZE || col < 0 || col >= BOARD_SIZE) {
-        return SpecialSquare::NORMAL; // Default case
+        return SpecialSquare::NORMAL;
     }
     return specialSquares[row][col];
 }
@@ -72,7 +72,7 @@ bool Board::isValidPlacement(int row, int col, const vector<Tile>& tilesToPlace,
         int curCol = isHorizontal ? col + static_cast<int>(i) : col;
 
         if (curRow >= BOARD_SIZE || curCol >= BOARD_SIZE) return false;
-        if (tiles[curRow][curCol] != nullptr) return false; // check position already occupied
+        if (tiles[curRow][curCol] != nullptr) return false;
     }
 
     if (isEmpty()) {
@@ -82,12 +82,11 @@ bool Board::isValidPlacement(int row, int col, const vector<Tile>& tilesToPlace,
             int curRow = isVertical ? row + static_cast<int>(i) : row;
             int curCol = isHorizontal ? col + static_cast<int>(i) : col;
 
-            // Check if word crosses center square
             if (curRow == 7 && curCol == 7) {
                 return true;
             }
         }
-        return false; // First word MUST cross center
+        return false;
     }
 
     bool connectsToExisting = false;
@@ -110,7 +109,7 @@ bool Board::isValidPlacement(int row, int col, const vector<Tile>& tilesToPlace,
         if (connectsToExisting) break;
     }
 
-    return connectsToExisting; // Must connect to existing tiles
+    return connectsToExisting;
 }
 
 int Board::calculateWordScore(int row, int col, const string& word, 
